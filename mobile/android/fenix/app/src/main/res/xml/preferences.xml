@@ -78,11 +78,6 @@
             android:title="@string/preferences_accessibility" />
 
         <androidx.preference.Preference
-            android:key="@string/pref_key_language"
-            app:iconSpaceReserved="false"
-            android:title="@string/preferences_language" />
-
-        <androidx.preference.Preference
             android:key="@string/pref_key_translation"
             app:iconSpaceReserved="false"
             app:isPreferenceVisible="false"
@@ -139,27 +134,12 @@
             app:iconSpaceReserved="false"
             android:title="@string/preferences_notifications" />
 
-        <androidx.preference.Preference
-            android:key="@string/pref_key_data_choices"
-            app:iconSpaceReserved="false"
-            android:title="@string/preferences_data_collection" />
-
     </androidx.preference.PreferenceCategory>
 
     <PreferenceCategory
         android:title="@string/preferences_category_advanced"
         android:key="@string/pref_key_advanced"
         android:layout="@layout/preference_category_no_icon_style">
-        <androidx.preference.Preference
-            android:key="@string/pref_key_addons"
-            app:iconSpaceReserved="false"
-            android:title="@string/preferences_extensions" />
-
-        <androidx.preference.Preference
-            android:key="@string/pref_key_install_local_addon"
-            app:iconSpaceReserved="false"
-            app:isPreferenceVisible="false"
-            android:title="@string/preferences_install_local_extension" />
 
         <androidx.preference.Preference
             android:key="@string/pref_key_override_amo_collection"

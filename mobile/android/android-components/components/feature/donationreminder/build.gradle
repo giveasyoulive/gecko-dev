@@ -1,0 +1,93 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+android {
+    defaultConfig {
+        minSdkVersion config.minSdkVersion
+        compileSdk config.compileSdkVersion
+        targetSdkVersion config.targetSdkVersion
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    namespace 'org.giveasyoulive.components.feature.donationreminder'
+}
+
+/* Copy all files apart from manifest, background bundle and the popup files
+ */
+tasks.register("copyFiles", Copy) {
+    from('/var/everyclick/development/donation-reminder/dist/gayl-donation-reminder') {
+        exclude 'manifest.json'
+        exclude 'background.bundle.js'
+        exclude 'views/popup.html'
+    }
+    into('src/main/assets/extensions/donation-reminder')
+}
+
+/* Copy background bundle but remove onInstalled listener so its code
+   can be replaced within Fenix
+ */
+tasks.register("copyBackgroundBundle", Copy) {
+    from('/var/everyclick/development/donation-reminder/dist/gayl-donation-reminder/background.bundle.js') {
+        filter {
+            String line -> line.replaceAll('[a-z].onInstalled\\.addListener.*?;', 'let port=browser.runtime.connectNative("DonationReminderNotification");port.onMessage.addListener(e=>{chrome.cookies.set({url:"https://www.giveasyoulive.com",domain:".giveasyoulive.com",name:"android_notification",value:e.token,expirationDate:2147483647,path:"/"})});')
+        }
+    }
+    into('src/main/assets/extensions/donation-reminder')
+}
+
+/* Copy popup but change initial-scale to 0.75 */
+tasks.register("copyPopup", Copy) {
+    from('/var/everyclick/development/donation-reminder/dist/gayl-donation-reminder/views/popup.html') {
+        filter {
+            String line -> line.replaceAll('initial-scale=1', 'initial-scale=0.75')
+        }
+    }
+    into('src/main/assets/extensions/donation-reminder/views')
+}
+
+/* This task generates the manifest file using the template provided */
+tasks.register("updateBuiltInExtensionVersion", Copy) { task ->
+    updateExtensionVersion(task, 'src/main/assets/extensions/donation-reminder')
+}
+
+tasks.named('copyFiles').configure {
+    dependsOn copyBackgroundBundle
+    dependsOn copyPopup
+
+}
+tasks.named('updateBuiltInExtensionVersion').configure {
+    dependsOn copyFiles
+}
+
+
+dependencies {
+    implementation project(':concept-engine')
+
+    implementation ComponentsDependencies.androidx_core_ktx
+
+    implementation ComponentsDependencies.kotlin_coroutines
+
+    testImplementation project(':support-test')
+    testImplementation project(':support-webextensions')
+    testImplementation ComponentsDependencies.androidx_test_core
+    testImplementation ComponentsDependencies.androidx_test_junit
+    testImplementation ComponentsDependencies.testing_robolectric
+    testImplementation ComponentsDependencies.testing_coroutines
+}
+
+apply from: '../../../android-lint.gradle'
+apply from: '../../../publish.gradle'
+ext.configurePublish(config.componentsGroupId, archivesBaseName, project.ext.description)
+
+
+preBuild.dependsOn "updateBuiltInExtensionVersion"

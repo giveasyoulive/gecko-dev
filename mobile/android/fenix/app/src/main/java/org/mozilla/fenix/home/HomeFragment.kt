@@ -115,6 +115,8 @@ import org.mozilla.fenix.components.TabCollectionStorage
 import org.mozilla.fenix.components.appstate.AppAction
 import org.mozilla.fenix.components.appstate.AppAction.MessagingAction
 import org.mozilla.fenix.components.appstate.AppAction.MessagingAction.MicrosurveyAction
+import org.mozilla.fenix.components.feature.giveasyoulive.view.DonationReminderAdvertFeature
+import org.mozilla.fenix.components.feature.giveasyoulive.view.DonationReminderAdvertsDefaultView
 import org.mozilla.fenix.components.components
 import org.mozilla.fenix.components.menu.MenuAccessPoint
 import org.mozilla.fenix.components.toolbar.BottomToolbarContainerIntegration
@@ -269,6 +271,8 @@ class HomeFragment : Fragment() {
     private val recentSyncedTabFeature = ViewBoundFeatureWrapper<RecentSyncedTabFeature>()
     private val bookmarksFeature = ViewBoundFeatureWrapper<BookmarksFeature>()
     private val historyMetadataFeature = ViewBoundFeatureWrapper<RecentVisitsFeature>()
+    private val donationReminderAdvertFeature = ViewBoundFeatureWrapper<DonationReminderAdvertFeature>()
+
     private val searchSelectorBinding = ViewBoundFeatureWrapper<SearchSelectorBinding>()
     private val searchSelectorMenuBinding = ViewBoundFeatureWrapper<SearchSelectorMenuBinding>()
     private val bottomToolbarContainerIntegration = ViewBoundFeatureWrapper<BottomToolbarContainerIntegration>()
@@ -347,6 +351,18 @@ class HomeFragment : Fragment() {
 
             initializeMicrosurveyFeature(requireContext().settings().microsurveyFeatureEnabled)
         }
+
+        donationReminderAdvertFeature.set(
+            feature = DonationReminderAdvertFeature(
+                view = DonationReminderAdvertsDefaultView(
+                    store = components.appStore,
+                    settings = components.settings
+                ),
+                storage = components.core.donationReminderAdvertStorage
+            ),
+            owner = viewLifecycleOwner,
+            view = binding.root
+        )
 
         if (requireContext().settings().showTopSitesFeature) {
             topSitesFeature.set(
@@ -1609,7 +1625,7 @@ class HomeFragment : Fragment() {
     }
 
     /**
-     * Called when authentication succeeds.
+     * Called when authentication succee       ds.
      */
     private fun navigateToSavedLoginsFragment() {
         val navController = findNavController()

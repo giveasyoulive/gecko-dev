@@ -1403,6 +1403,28 @@ projects:
     - support-utils
     - tooling-lint
     - ui-icons
+  feature-donationreminder:
+    description: GAYL Donation Reminder
+    path: components/feature/donationreminder
+    publish: true
+    upstream_dependencies:
+      - browser-errorpages
+      - browser-state
+      - concept-awesomebar
+      - concept-base
+      - concept-engine
+      - concept-fetch
+      - concept-storage
+      - lib-publicsuffixlist
+      - lib-state
+      - support-base
+      - support-ktx
+      - support-test
+      - support-utils
+      - support-webextensions
+      - tooling-lint
+      - ui-icons
+
   feature-webcompat:
     description: Feature that provides hotfixes for websites from Mozilla's Web Compatibility
       team

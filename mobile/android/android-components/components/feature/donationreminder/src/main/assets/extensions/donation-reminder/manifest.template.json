@@ -1,0 +1,76 @@
+{
+	"manifest_version": 2,	
+	"author": "Give as you Live Ltd",
+	"name": "Give as you Live Donation Reminder",
+	"version": "${version}",
+	"description": "Give as you Live Online is the free way to raise funds for charity with your everyday online shopping.",
+
+	"homepage_url": "https://www.giveasyoulive.com",
+
+	"background": {
+		"scripts": ["./background.bundle.js"]
+	},
+	"content_scripts": [
+		{
+			"matches": ["*://*.giveasyoulive.com/*"],
+			"js": ["./extensionInstalled.bundle.js"],
+			"run_at": "document_start"
+		},
+		{
+			"css": ["./styles/css/serp.css"],
+			"js": ["./serp.bundle.js"],
+			"matches": [
+				"*://*.google.com/*",
+				"*://*.google.co.uk/*",
+				"*://*.bing.com/*",
+				"*://uk.search.yahoo.com/*",
+				"*://search.yahoo.com/*"
+			],
+			"run_at": "document_end"
+		},
+		{
+			"js": ["./retailer.bundle.js"],
+			"matches": [ "<all_urls>" ],
+			"run_at": "document_start"
+		}
+	],
+	"permissions": [
+		"geckoViewAddons",
+		"nativeMessaging",
+		"nativeMessagingFromContent",
+		"cookies",
+		"storage",
+		"webNavigation",
+		"webRequest",
+		"http://*/*",
+		"https://*/*"
+	],
+	"browser_action": {
+		"default_popup": "./views/popup.html",
+		"default_icon": {
+			"128": "images/inactive_128.png"
+		}
+	},
+	"icons": {
+		"16" : "images/icon_16.png",
+		"44" : "images/icon_44.png",
+		"48" : "images/icon_48.png",
+		"50" : "images/icon_50.png",
+		"96" : "images/icon_96.png",
+		"128": "images/icon_128.png",
+		"150": "images/icon_150.png"
+	},
+
+	"browser_specific_settings": {
+			"gecko": {
+				"strict_min_version": "102.0",
+				"id": "gayl_firefox@everyclick.com"
+			}
+	},
+	"web_accessible_resources": [
+		"images/*.svg",
+		"fonts/*.woff2",
+		"fonts/*.ttf",
+		"fonts/*.otf"
+	]
+}

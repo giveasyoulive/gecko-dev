@@ -348,7 +348,7 @@
     <color name="device_foreground">@color/photonInk80</color>
 
     <!-- Launcher Icon colors -->
-    <color name="ic_launcher_background">#FDFDFD</color>
+    <color name="ic_launcher_background">#F5F5F5</color>
 
     <!-- Private Browsing Mode Persistent Notification -->
     <color name="pbm_notification_color">@color/photonViolet70</color>
@@ -378,4 +378,7 @@
 
     <!-- Private Mode mask icon circle fill colors -->
     <color name="mozac_ui_private_mode_circle_fill" tools:ignore="UnusedResources">@color/photonPurple60</color>
+
+
+    <color name="ic_notification_color">#44b4e4</color>
 </resources>

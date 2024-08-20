@@ -18,6 +18,7 @@ import org.mozilla.fenix.browser.StandardSnackbarError
 import org.mozilla.fenix.browser.browsingmode.BrowsingMode
 import org.mozilla.fenix.components.AppStore
 import org.mozilla.fenix.components.appstate.shopping.ShoppingState
+import org.mozilla.fenix.components.feature.giveasyoulive.model.DonationReminderAdvert
 import org.mozilla.fenix.home.bookmarks.Bookmark
 import org.mozilla.fenix.home.pocket.PocketRecommendedStoriesCategory
 import org.mozilla.fenix.home.pocket.PocketRecommendedStoriesSelectedCategory
@@ -63,6 +64,7 @@ sealed class AppAction : Action {
         val bookmarks: List<Bookmark>,
         val recentHistory: List<RecentlyVisitedItem>,
         val recentSyncedTabState: RecentSyncedTabState,
+        val donationReminderAdverts: List<DonationReminderAdvert>,
     ) :
         AppAction()
 
@@ -92,6 +94,7 @@ sealed class AppAction : Action {
     data class RecentHistoryChange(val recentHistory: List<RecentlyVisitedItem>) : AppAction()
     data class RemoveRecentHistoryHighlight(val highlightUrl: String) : AppAction()
     data class DisbandSearchGroupAction(val searchTerm: String) : AppAction()
+    data class DonationReminderAdvertChange(val donationReminderAdverts: List<DonationReminderAdvert>) : AppAction()
 
     /**
      * Indicates the given [categoryName] was selected by the user.

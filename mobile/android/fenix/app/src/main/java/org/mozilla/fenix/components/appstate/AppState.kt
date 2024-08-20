@@ -17,6 +17,7 @@ import org.mozilla.fenix.browser.browsingmode.BrowsingMode
 import org.mozilla.fenix.components.appstate.readerview.ReaderViewState
 import org.mozilla.fenix.components.appstate.shopping.ShoppingState
 import org.mozilla.fenix.components.appstate.snackbar.SnackbarState
+import org.mozilla.fenix.components.feature.giveasyoulive.model.DonationReminderAdvert
 import org.mozilla.fenix.home.HomeFragment
 import org.mozilla.fenix.home.bookmarks.Bookmark
 import org.mozilla.fenix.home.pocket.PocketRecommendedStoriesCategory
@@ -99,4 +100,5 @@ data class AppState(
     val snackbarState: SnackbarState = SnackbarState.None,
     val showFindInPage: Boolean = false,
     val wasLastTabClosedPrivate: Boolean? = null,
+    val donationReminderAdverts: List<DonationReminderAdvert> = emptyList(),
 ) : State

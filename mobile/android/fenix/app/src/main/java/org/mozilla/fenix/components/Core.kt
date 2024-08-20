@@ -4,7 +4,9 @@
 
 package org.mozilla.fenix.components
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
 import android.os.StrictMode
@@ -71,6 +73,7 @@ import mozilla.components.feature.session.middleware.undo.UndoMiddleware
 import mozilla.components.feature.sitepermissions.OnDiskSitePermissionsStorage
 import mozilla.components.feature.top.sites.DefaultTopSitesStorage
 import mozilla.components.feature.top.sites.PinnedSiteStorage
+import org.giveasyoulive.components.feature.donationreminder.DonationReminderFeature
 import mozilla.components.feature.webcompat.WebCompatFeature
 import mozilla.components.feature.webcompat.reporter.WebCompatReporterFeature
 import mozilla.components.feature.webnotifications.WebNotificationFeature
@@ -96,6 +99,8 @@ import org.mozilla.fenix.BuildConfig
 import org.mozilla.fenix.Config
 import org.mozilla.fenix.IntentReceiverActivity
 import org.mozilla.fenix.R
+import org.mozilla.fenix.components.feature.giveasyoulive.provider.DonationReminderAdvertProvider
+import org.mozilla.fenix.components.feature.giveasyoulive.storage.DonationReminderAdvertDefaultStorage
 import org.mozilla.fenix.components.search.SearchMigration
 import org.mozilla.fenix.downloads.DownloadService
 import org.mozilla.fenix.ext.components
@@ -184,6 +189,8 @@ class Core(
             geckoRuntime,
         ).also {
             WebCompatFeature.install(it)
+            DonationReminderFeature.install(it, context)
+
 
             /**
              * There are some issues around localization to be resolved, as well as questions around
@@ -194,6 +201,8 @@ class Core(
             if (Config.channel.isNightlyOrDebug || Config.channel.isBeta) {
                 WebCompatReporterFeature.install(it, "fenix")
             }
+
+
         }
     }
 
@@ -501,6 +510,22 @@ class Core(
         )
     }
     val pocketStoriesService by lazyMonitored { PocketStoriesService(context, pocketStoriesConfig) }
+
+    private val donationReminderAdvertProvider by lazyMonitored {
+        DonationReminderAdvertProvider(
+            context = context,
+            client = client,
+            maxCacheAgeInMinutes = CONTILE_MAX_CACHE_AGE
+        )
+    }
+
+    val donationReminderAdvertStorage by lazyMonitored {
+
+        DonationReminderAdvertDefaultStorage(
+            advertProvider = donationReminderAdvertProvider
+        )
+    }
+
 
     val contileTopSitesProvider by lazyMonitored {
         ContileTopSitesProvider(

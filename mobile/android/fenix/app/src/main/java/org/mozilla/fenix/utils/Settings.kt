@@ -341,7 +341,7 @@ class Settings(private val appContext: Context) : PreferencesHolder {
 
     var isTelemetryEnabled by booleanPreference(
         appContext.getPreferenceKey(R.string.pref_key_telemetry),
-        default = true,
+        default = false,
     )
 
     var isMarketingTelemetryEnabled by booleanPreference(
@@ -1004,8 +1004,7 @@ class Settings(private val appContext: Context) : PreferencesHolder {
      */
     fun shouldDefaultToBottomToolbar(): Boolean {
         // Default accessibility users to top toolbar
-        return (!touchExplorationIsEnabled && !switchServiceIsEnabled) &&
-            !toolbarPositionTop
+        return false;
     }
 
     fun getDeleteDataOnQuit(type: DeleteBrowsingDataOnQuitType): Boolean =
@@ -1082,20 +1081,7 @@ class Settings(private val appContext: Context) : PreferencesHolder {
 
     val shouldShowPwaCfr: Boolean
         get() {
-            if (!canShowCfr) return false
-            // We only want to show this on the 3rd time a user visits a site
-            if (userNeedsToVisitInstallableSites) return false
-
-            // ShortcutManager::pinnedShortcuts is only available on Oreo+
-            if (!userKnowsAboutPwas && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val manager = appContext.getSystemService(ShortcutManager::class.java)
-                val alreadyHavePwaInstalled = manager != null && manager.pinnedShortcuts.size > 0
-
-                // Users know about PWAs onboarding if they already have PWAs installed.
-                userKnowsAboutPwas = alreadyHavePwaInstalled
-            }
-            // Show dialog only if user does not know abut PWAs
-            return !userKnowsAboutPwas
+            return false;
         }
 
     var userKnowsAboutPwas by booleanPreference(
@@ -1750,12 +1736,15 @@ class Settings(private val appContext: Context) : PreferencesHolder {
      * app icon.
      */
     fun shouldShowOnboarding(hasUserBeenOnboarded: Boolean, isLauncherIntent: Boolean): Boolean {
+
         return if (!hasUserBeenOnboarded && isLauncherIntent) {
-            FxNimbus.features.junoOnboarding.recordExposure()
+            //FxNimbus.features.junoOnboarding.recordExposure()
             true
         } else {
             false
         }
+
+
     }
 
     val feltPrivateBrowsingEnabled by lazyFeatureFlagPreference(

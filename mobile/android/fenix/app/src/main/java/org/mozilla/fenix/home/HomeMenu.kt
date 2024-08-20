@@ -155,31 +155,12 @@ class HomeMenu(
             onItemTapped.invoke(Item.Passwords)
         }
 
-        val extensionsItem = BrowserMenuImageText(
-            context.getString(R.string.browser_menu_extensions),
-            R.drawable.ic_addons_extensions,
-            primaryTextColor,
-        ) {
-            onItemTapped.invoke(Item.Extensions)
-        }
 
         val manageAccountAndDevicesItem = SimpleBrowserMenuItem(
             context.getString(R.string.browser_menu_manage_account_and_devices),
             textColorResource = primaryTextColor,
         ) {
             onItemTapped.invoke(Item.ManageAccountAndDevices)
-        }
-
-        val whatsNewItem = BrowserMenuHighlightableItem(
-            context.getString(R.string.browser_menu_whats_new),
-            R.drawable.ic_whats_new,
-            iconTintColorResource = primaryTextColor,
-            highlight = BrowserMenuHighlight.LowPriority(
-                notificationTint = getColor(context, R.color.fx_mobile_icon_color_information),
-            ),
-            isHighlighted = { WhatsNew.shouldHighlightWhatsNew(context) },
-        ) {
-            onItemTapped.invoke(Item.WhatsNew)
         }
 
         val helpItem = BrowserMenuImageText(
@@ -231,14 +212,12 @@ class HomeMenu(
             historyItem,
             downloadsItem,
             passwordsItem,
-            extensionsItem,
             syncSignInMenuItem,
             accountAuthItem,
             if (Config.channel.isMozillaOnline) manageAccountAndDevicesItem else null,
             BrowserMenuDivider(),
             desktopItem,
             BrowserMenuDivider(),
-            whatsNewItem,
             helpItem,
             customizeHomeItem,
             settingsItem,

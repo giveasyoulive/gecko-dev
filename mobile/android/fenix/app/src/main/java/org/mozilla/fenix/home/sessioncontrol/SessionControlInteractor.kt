@@ -136,6 +136,12 @@ interface CustomizeHomeIteractor {
     fun openCustomizeHomePage()
 }
 
+interface DonationReminderAdvertInteractor {
+    /**
+     * Opens the customize home settings page.
+     */
+    fun openAdvertPage(advertUrl: String)
+}
 /**
  * Interface for top site related actions in the [SessionControlInteractor].
  */
@@ -247,7 +253,8 @@ class SessionControlInteractor(
     PocketStoriesInteractor,
     PrivateBrowsingInteractor,
     SearchSelectorInteractor,
-    WallpaperInteractor {
+    WallpaperInteractor,
+    DonationReminderAdvertInteractor {
 
     override fun onCollectionAddTabTapped(collection: TabCollection) {
         controller.handleCollectionAddTabTapped(collection)
@@ -441,5 +448,9 @@ class SessionControlInteractor(
 
     override fun onMenuItemTapped(item: SearchSelectorMenu.Item) {
         searchSelectorController.handleMenuItemTapped(item)
+    }
+
+    override fun openAdvertPage(advertUrl: String) {
+        toolbarController.handlePasteAndGo(advertUrl)
     }
 }

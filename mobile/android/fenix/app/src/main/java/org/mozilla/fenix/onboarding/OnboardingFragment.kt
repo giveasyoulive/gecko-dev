@@ -4,262 +4,419 @@
 
 package org.mozilla.fenix.onboarding
 
-import android.annotation.SuppressLint
-import android.content.Context
-import android.content.IntentFilter
-import android.content.pm.ActivityInfo
-import android.os.Build
+import android.Manifest
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ObjectAnimator
+import android.content.pm.PackageManager
 import android.os.Bundle
-import android.os.StrictMode
-import android.view.LayoutInflater
+import android.os.Handler
+import android.os.Looper
+import android.text.method.ScrollingMovementMethod
 import android.view.View
-import android.view.ViewGroup
-import androidx.annotation.RequiresApi
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.ComposeView
-import androidx.core.app.NotificationManagerCompat
+import android.view.animation.TranslateAnimation
+import android.widget.Button
+import android.widget.ImageView
+import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.navigation.fragment.findNavController
-import mozilla.components.service.nimbus.evalJexlSafe
-import mozilla.components.service.nimbus.messaging.use
-import mozilla.components.support.base.ext.areNotificationsEnabledSafe
-import mozilla.components.support.utils.BrowsersCache
+import com.google.firebase.messaging.FirebaseMessaging
+import org.mozilla.fenix.BrowserDirection
+import org.mozilla.fenix.HomeActivity
+import org.mozilla.fenix.NavHostActivity
 import org.mozilla.fenix.R
-import org.mozilla.fenix.components.accounts.FenixFxAEntryPoint
-import org.mozilla.fenix.compose.LinkTextState
-import org.mozilla.fenix.ext.components
-import org.mozilla.fenix.ext.hideToolbar
-import org.mozilla.fenix.ext.isDefaultBrowserPromptSupported
 import org.mozilla.fenix.ext.nav
-import org.mozilla.fenix.ext.openSetDefaultBrowserOption
 import org.mozilla.fenix.ext.requireComponents
-import org.mozilla.fenix.nimbus.FxNimbus
-import org.mozilla.fenix.onboarding.view.Caption
-import org.mozilla.fenix.onboarding.view.OnboardingPageUiData
-import org.mozilla.fenix.onboarding.view.OnboardingScreen
-import org.mozilla.fenix.onboarding.view.sequencePosition
-import org.mozilla.fenix.onboarding.view.telemetrySequenceId
-import org.mozilla.fenix.onboarding.view.toPageUiData
-import org.mozilla.fenix.settings.SupportUtils
-import org.mozilla.fenix.theme.FirefoxTheme
-import org.mozilla.fenix.utils.canShowAddSearchWidgetPrompt
-import org.mozilla.fenix.utils.showAddSearchWidgetPrompt
 
-/**
- * Fragment displaying the onboarding flow.
- */
-class OnboardingFragment : Fragment() {
 
-    private val pagesToDisplay by lazy {
-        pagesToDisplay(
-            isNotDefaultBrowser(requireContext()) &&
-                activity?.isDefaultBrowserPromptSupported() == false,
-            canShowNotificationPage(requireContext()),
-            canShowAddSearchWidgetPrompt(),
-        )
+// The Donation Reminder onboarding journey
+
+class OnboardingFragment : Fragment(R.layout.onboarding_donationreminder_demo) {
+
+    private var page = 0
+    private lateinit var imgAnim1: ImageView
+    private lateinit var imgAnim2: ImageView
+    private lateinit var handlerAnimation: Handler
+    private lateinit var nextStep: Button
+    private lateinit var title: TextView
+    private lateinit var desc: TextView
+
+
+    private val requestNotificationPermission =
+        registerForActivityResult(
+            ActivityResultContracts.RequestPermission(),
+        ) { _: Boolean ->
+            finishOnboarding()
+        }
+
+
+    // Produce pulse animation
+    private var runnableAnim: Runnable = Runnable {
+
+        run {
+
+            imgAnim1.animate().scaleX(75f).scaleY(75f).alpha(0f).setDuration(1000).withEndAction {
+                run {
+                    imgAnim1.scaleX = 1f
+                    imgAnim1.scaleY = 1f
+                    imgAnim1.alpha = 1f
+
+                }
+            }
+
+            imgAnim2.animate().scaleX(75f).scaleY(75f).alpha(0f).setDuration(700).withEndAction {
+                run {
+                    imgAnim2.scaleX = 1f
+                    imgAnim2.scaleY = 1f
+                    imgAnim2.alpha = 1f
+
+                }
+            }
+
+            handlerAnimation.postDelayed(runnableAnim, 1500)
+        }
+
     }
-    private val telemetryRecorder by lazy { OnboardingTelemetryRecorder() }
-    private val pinAppWidgetReceiver = WidgetPinnedReceiver()
 
-    @SuppressLint("SourceLockedOrientationActivity")
+
+    /**
+     * Create the page
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val context = requireContext()
-        if (pagesToDisplay.isEmpty()) {
-            /* do not continue if there's no onboarding pages to display */
-            onFinish(null)
+        //setHasOptionsMenu(false)
+    }
+
+    /**
+     * Modify the page layout to match the requirements
+     */
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+
+        // Only show the title on the action bar
+        val actionBar = (activity as NavHostActivity).getSupportActionBarAndInflateIfNecessary()
+        actionBar.setDisplayHomeAsUpEnabled(false)
+        actionBar.show()
+
+
+        // Get the handle to the title, desc and next step button
+        val activity = activity as AppCompatActivity
+        title = activity.findViewById(R.id.onboarding_dr_title)
+        desc = activity.findViewById(R.id.onboarding_dr_desc)
+        nextStep = activity.findViewById(R.id.onboarding_dr_next_step_button)
+
+        desc.movementMethod = ScrollingMovementMethod()
+
+        // Now - present the first step
+        page = 0
+        nextStep()
+
+
+        // Wait for the next step button to be clicked
+        nextStep.setOnClickListener {
+
+            // Display the next page
+            nextStep()
         }
 
-        if (isNotATablet()) {
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        }
-        val filter = IntentFilter(WidgetPinnedReceiver.ACTION)
-        LocalBroadcastManager.getInstance(context)
-            .registerReceiver(pinAppWidgetReceiver, filter)
+        // Define Pulse Animation Handler
+        handlerAnimation = Handler(Looper.getMainLooper())
 
-        if (isNotDefaultBrowser(context) &&
-            activity?.isDefaultBrowserPromptSupported() == true
-        ) {
-            requireComponents.strictMode.resetAfter(StrictMode.allowThreadDiskReads()) {
-                promptToSetAsDefaultBrowser()
+    }
+
+    /**
+     * Enable or disable the next step button
+     */
+    private fun nextStepButton(enabled: Boolean) = when (enabled) {
+        false -> {
+            nextStep.alpha = 0.7f
+            nextStep.isEnabled = false
+        }
+        else -> {
+            nextStep.alpha = 1f
+            nextStep.isEnabled = true
+        }
+    }
+
+    /**
+     * Support paging
+     */
+    private fun nextStep() {
+
+        // Disable the next step button until the page is complete
+        nextStepButton(false)
+
+        page += 1
+
+        when (page) {
+
+            1 -> {
+
+                // Update the views with the latest step data
+                title.text = getString(R.string.onboarding_dr_title1)
+                desc.text = getString(R.string.onboarding_dr_desc1)
+                nextStep.text = getString(R.string.onboarding_dr_step1)
+
+                nextStepButton(true)
+            }
+
+            2 -> {
+
+
+                // Update the views with the latest step data
+                title.text = getString(R.string.onboarding_dr_title2)
+                desc.text = getString(R.string.onboarding_dr_desc2)
+                nextStep.text = getString(R.string.onboarding_dr_step2)
+
+                // Fade in the search page
+                activity?.let {
+                    fadeOut(it.findViewById(R.id.onboarding_dr_start)) {}
+                    fadeIn(it.findViewById(R.id.onboarding_dr_search)) {
+
+                        // Display the pulse over the heart cart
+                        pulse(
+                            it.findViewById(R.id.onboarding_dr_pulse_heart_cart),
+                            it.findViewById(R.id.onboarding_dr_pulse_heart_cart1),
+                            2000,
+                        ) {
+                            nextStepButton(true)
+                        }
+                    }
+                }
+
+            }
+            3 -> {
+
+                // Update the views with the latest step data
+                title.text = getString(R.string.onboarding_dr_title3)
+                desc.text = getString(R.string.onboarding_dr_desc3)
+                nextStep.text = getString(R.string.onboarding_dr_step3)
+
+                // Slide the sidebar in
+                activity?.let {
+                    show(it.findViewById(R.id.onboarding_dr_sidebar_fade))
+                    slideLeft(it.findViewById(R.id.onboarding_dr_sidebar), 1000)
+                }
+
+                nextStepButton(true)
+            }
+
+            4 -> {
+
+                // Update the views with the latest step data
+                title.text = getString(R.string.onboarding_dr_title4)
+                desc.text = getString(R.string.onboarding_dr_desc4)
+                nextStep.text = getString(R.string.onboarding_dr_step4)
+
+                // Pulse over John lewis
+                activity?.let {
+                    pulse(
+                        it.findViewById(R.id.onboarding_dr_pulse_jl),
+                        it.findViewById(R.id.onboarding_dr_pulse_jl),
+                        2000,
+                    ) {
+                        // Transition to John Lewis & Fade in the thankyou popup
+                        fadeOut(it.findViewById(R.id.onboarding_dr_sidebar)) {}
+                        fadeOut(it.findViewById(R.id.onboarding_dr_sidebar_fade)) {}
+                        fadeOut(it.findViewById(R.id.onboarding_dr_search)) {}
+                        fadeIn(it.findViewById(R.id.onboarding_dr_jl)) {
+
+                            sleep(1000) {
+                                fadeIn(it.findViewById(R.id.onboarding_dr_jl_thank_you)) {
+                                    nextStepButton(true)
+                                }
+                            }
+
+
+                        }
+
+                    }
+                }
+            }
+            5 -> {
+
+                // Update the views with the latest step data
+                title.text = getString(R.string.onboarding_dr_title5)
+                desc.text = getString(R.string.onboarding_dr_desc5)
+                nextStep.text = getString(R.string.onboarding_dr_step5)
+                nextStep.setBackgroundResource(R.drawable.round_shape_green_button);
+
+                // Fade out the thank you popup and show the notification
+                activity?.let {
+                    fadeOut(it.findViewById(R.id.onboarding_dr_jl_thank_you)) {}
+                    fadeOut(it.findViewById(R.id.onboarding_dr_jl)) {}
+
+                    fadeIn(it.findViewById(R.id.onboarding_dr_phone_home)) {
+
+                        sleep(1000) {
+                            fadeIn(it.findViewById(R.id.onboarding_dr_notification)) {
+                                nextStepButton(true)
+                            }
+                        }
+
+                    }
+                }
+
+            }
+            6 -> {
+
+
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    val permission = Manifest.permission.POST_NOTIFICATIONS
+
+                    if (activity?.let { ActivityCompat.checkSelfPermission(it, permission) } != PackageManager.PERMISSION_GRANTED){
+                        requestNotificationPermission.launch(permission)
+                    }
+
+                } else {
+                    finishOnboarding()
+                }
+
+
             }
         }
 
-        telemetryRecorder.onOnboardingStarted()
     }
 
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?,
-    ): View = ComposeView(requireContext()).apply {
-        setContent {
-            FirefoxTheme {
-                ScreenContent()
-            }
-        }
-    }
+    private fun finishOnboarding() {
 
-    override fun onResume() {
-        super.onResume()
-        hideToolbar()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        if (isNotATablet()) {
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        }
-        LocalBroadcastManager.getInstance(requireContext()).unregisterReceiver(pinAppWidgetReceiver)
-    }
-
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    @Composable
-    @Suppress("LongMethod")
-    private fun ScreenContent() {
-        OnboardingScreen(
-            pagesToDisplay = pagesToDisplay,
-            onMakeFirefoxDefaultClick = {
-                promptToSetAsDefaultBrowser()
-            },
-            onSkipDefaultClick = {
-                telemetryRecorder.onSkipSetToDefaultClick(
-                    pagesToDisplay.telemetrySequenceId(),
-                    pagesToDisplay.sequencePosition(OnboardingPageUiData.Type.DEFAULT_BROWSER),
-                )
-            },
-            onSignInButtonClick = {
-                findNavController().nav(
-                    id = R.id.onboardingFragment,
-                    directions = OnboardingFragmentDirections.actionGlobalTurnOnSync(
-                        entrypoint = FenixFxAEntryPoint.NewUserOnboarding,
-                    ),
-                )
-                telemetryRecorder.onSyncSignInClick(
-                    sequenceId = pagesToDisplay.telemetrySequenceId(),
-                    sequencePosition = pagesToDisplay.sequencePosition(OnboardingPageUiData.Type.SYNC_SIGN_IN),
-                )
-            },
-            onSkipSignInClick = {
-                telemetryRecorder.onSkipSignInClick(
-                    pagesToDisplay.telemetrySequenceId(),
-                    pagesToDisplay.sequencePosition(OnboardingPageUiData.Type.SYNC_SIGN_IN),
-                )
-            },
-            onNotificationPermissionButtonClick = {
-                requireComponents.notificationsDelegate.requestNotificationPermission()
-                telemetryRecorder.onNotificationPermissionClick(
-                    sequenceId = pagesToDisplay.telemetrySequenceId(),
-                    sequencePosition =
-                    pagesToDisplay.sequencePosition(OnboardingPageUiData.Type.NOTIFICATION_PERMISSION),
-                )
-            },
-            onSkipNotificationClick = {
-                telemetryRecorder.onSkipTurnOnNotificationsClick(
-                    sequenceId = pagesToDisplay.telemetrySequenceId(),
-                    sequencePosition =
-                    pagesToDisplay.sequencePosition(OnboardingPageUiData.Type.NOTIFICATION_PERMISSION),
-                )
-            },
-            onAddFirefoxWidgetClick = {
-                telemetryRecorder.onAddSearchWidgetClick(
-                    pagesToDisplay.telemetrySequenceId(),
-                    pagesToDisplay.sequencePosition(OnboardingPageUiData.Type.ADD_SEARCH_WIDGET),
-                )
-                showAddSearchWidgetPrompt(requireActivity())
-            },
-            onSkipFirefoxWidgetClick = {
-                telemetryRecorder.onSkipAddWidgetClick(
-                    pagesToDisplay.telemetrySequenceId(),
-                    pagesToDisplay.sequencePosition(OnboardingPageUiData.Type.ADD_SEARCH_WIDGET),
-                )
-            },
-            onFinish = {
-                onFinish(it)
-            },
-            onImpression = {
-                telemetryRecorder.onImpression(
-                    sequenceId = pagesToDisplay.telemetrySequenceId(),
-                    pageType = it.type,
-                    sequencePosition = pagesToDisplay.sequencePosition(it.type),
-                )
-            },
-        )
-    }
-
-    private fun onFinish(onboardingPageUiData: OnboardingPageUiData?) {
-        /* onboarding page UI data can be null if there was no pages to display */
-        if (onboardingPageUiData != null) {
-            val sequenceId = pagesToDisplay.telemetrySequenceId()
-            val sequencePosition = pagesToDisplay.sequencePosition(onboardingPageUiData.type)
-
-            telemetryRecorder.onOnboardingComplete(
-                sequenceId = sequenceId,
-                sequencePosition = sequencePosition,
-            )
-        }
+        // Subscribe the device to the communications topic
+        FirebaseMessaging.getInstance().subscribeToTopic("communications");
 
         requireComponents.fenixOnboarding.finish()
+
+        // Navigate back to the home page
         findNavController().nav(
             id = R.id.onboardingFragment,
             directions = OnboardingFragmentDirections.actionHome(),
         )
+
+        // Show the app welcome page
+        (activity as HomeActivity).openToBrowserAndLoad(
+            searchTermOrURL = "https://www.giveasyoulive.com/app-welcome",
+            newTab = true,
+            from = BrowserDirection.FromHome,
+        )
+
+
+
     }
 
-    private fun isNotDefaultBrowser(context: Context) =
-        !BrowsersCache.all(context.applicationContext).isDefaultBrowser
 
-    private fun canShowNotificationPage(context: Context) =
-        !NotificationManagerCompat.from(context.applicationContext)
-            .areNotificationsEnabledSafe() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+    /**
+     * Sleep for a specified interval
+     */
+    private fun sleep(interval: Long, callback: () -> Unit) {
 
-    private fun isNotATablet() = !resources.getBoolean(R.bool.tablet)
+        val handler = Handler(Looper.getMainLooper())
 
-    private fun pagesToDisplay(
-        showDefaultBrowserPage: Boolean,
-        showNotificationPage: Boolean,
-        showAddWidgetPage: Boolean,
-    ): List<OnboardingPageUiData> {
-        val jexlConditions = FxNimbus.features.junoOnboarding.value().conditions
-        val jexlHelper = requireContext().components.nimbus.createJexlHelper()
+        handler.postDelayed(
+            {
 
-        val privacyCaption = Caption(
-            text = getString(R.string.juno_onboarding_privacy_notice_text),
-            linkTextState = LinkTextState(
-                text = getString(R.string.juno_onboarding_privacy_notice_text),
-                url = SupportUtils.getMozillaPageUrl(SupportUtils.MozillaPage.PRIVATE_NOTICE),
-                onClick = {
-                    startActivity(
-                        SupportUtils.createSandboxCustomTabIntent(
-                            context = requireContext(),
-                            url = it,
-                        ),
-                    )
-                    telemetryRecorder.onPrivacyPolicyClick(
-                        pagesToDisplay.telemetrySequenceId(),
-                        pagesToDisplay.sequencePosition(OnboardingPageUiData.Type.DEFAULT_BROWSER),
-                    )
-                },
-            ),
+                handler.removeCallbacksAndMessages(null)
+
+                callback()
+
+            },
+            interval,
         )
-        return jexlHelper.use {
-            FxNimbus.features.junoOnboarding.value().cards.values.toPageUiData(
-                privacyCaption,
-                showDefaultBrowserPage,
-                showNotificationPage,
-                showAddWidgetPage,
-                jexlConditions,
-            ) { condition -> jexlHelper.evalJexlSafe(condition) }
+    }
+
+    /**
+     * Slide the view from right to left
+     */
+    private fun slideLeft(img: ImageView, interval: Long) {
+        val animation = TranslateAnimation(500.0f, 0.0f, 0.0f, 0.0f)
+
+        animation.duration = interval
+        animation.repeatCount = 0
+        animation.fillAfter = true
+        img.startAnimation(animation);
+
+    }
+
+    /**
+     * Pulse icon
+     */
+    private fun pulse(imgAnim1: ImageView, imgAnim2: ImageView, interval: Long, callback: () -> Unit) {
+
+        this.imgAnim1 = imgAnim1
+        this.imgAnim2 = imgAnim2
+
+        // Make the animation element visible
+        imgAnim1.visibility = View.VISIBLE
+        imgAnim2.visibility = View.VISIBLE
+
+        // Run the animation
+        runnableAnim.run()
+
+        sleep(interval) {
+
+            // Hide the animation
+            imgAnim1.visibility = View.INVISIBLE
+            imgAnim2.visibility = View.INVISIBLE
+
+            handlerAnimation.removeCallbacksAndMessages(null)
+
+            callback()
         }
+
     }
 
-    private fun promptToSetAsDefaultBrowser() {
-        activity?.openSetDefaultBrowserOption(useCustomTab = true)
-        telemetryRecorder.onSetToDefaultClick(
-            sequenceId = pagesToDisplay.telemetrySequenceId(),
-            sequencePosition = pagesToDisplay.sequencePosition(OnboardingPageUiData.Type.DEFAULT_BROWSER),
-        )
+    /**
+     * Show image
+     */
+    private fun show(img: ImageView) {
+        img.visibility = View.VISIBLE
     }
+
+    /**
+     * Hide image
+     */
+    private fun hide(img: ImageView) {
+        img.visibility = View.INVISIBLE
+    }
+
+
+    /**
+     * Fade in ImageView
+     */
+    private fun fadeIn(img: ImageView, callback: () -> Unit ) {
+        val fadeIn = ObjectAnimator.ofFloat(img, "alpha", 0f, 1f)
+        fadeIn.duration = 500
+        fadeIn.addListener(
+            object : AnimatorListenerAdapter() {
+                override fun onAnimationStart(animation: Animator) {
+                    // We wanna set the view to VISIBLE, but with alpha 0. So it appear invisible in the layout.
+                    img.visibility = View.VISIBLE
+                    img.alpha = 0f
+
+                    callback()
+                }
+            },
+        )
+        fadeIn.start()
+    }
+
+    /**
+     * Fade out ImageView
+     */
+    private fun fadeOut(img: ImageView, callback: () -> Unit) {
+        val fadeOut = ObjectAnimator.ofFloat(img, "alpha", 1f, 0f)
+        fadeOut.duration = 500
+        fadeOut.addListener(
+            object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    // We wanna set the view to GONE, after it's fade out. so it actually disappear from the layout & don't take up space.
+                    img.visibility = View.GONE
+
+                    callback()
+                }
+            },
+        )
+        fadeOut.start()
+    }
+
 }

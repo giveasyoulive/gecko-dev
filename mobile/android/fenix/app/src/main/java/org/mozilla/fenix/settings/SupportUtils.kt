@@ -86,7 +86,11 @@ object SupportUtils {
         val appVersion = context.appVersionName.replace(" ", "")
         val osTarget = "Android"
         val langTag = getLanguageTag(locale)
-        return "https://support.mozilla.org/1/mobile/$appVersion/$osTarget/$langTag/$escapedTopic"
+
+        return if(topic == SumoTopic.HELP)
+            "https://help.giveasyoulive.com/hc/en-us"
+        else
+            "https://support.mozilla.org/1/mobile/$appVersion/$osTarget/$langTag/$escapedTopic"
     }
 
     /**
@@ -106,7 +110,12 @@ object SupportUtils {
     fun getMozillaPageUrl(page: MozillaPage, locale: Locale = Locale.getDefault()): String {
         val path = page.path
         val langTag = getLanguageTag(locale)
-        return "https://www.mozilla.org/$langTag/$path"
+
+        return if(page == MozillaPage.PRIVATE_NOTICE)
+            "https://www.giveasyoulive.com/privacy"
+        else
+            "https://www.mozilla.org/$langTag/$path"
+
     }
 
     fun createCustomTabIntent(context: Context, url: String): Intent = CustomTabsIntent.Builder()

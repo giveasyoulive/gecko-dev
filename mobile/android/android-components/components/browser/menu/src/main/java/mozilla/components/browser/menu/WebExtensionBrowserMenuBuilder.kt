@@ -40,7 +40,7 @@ class WebExtensionBrowserMenuBuilder(
     private val style: Style = Style(),
     private val onAddonsManagerTapped: () -> Unit = {},
     private val appendExtensionSubMenuAtStart: Boolean = false,
-    private val showAddonsInMenu: Boolean = true,
+    private val showAddonsInMenu: Boolean = false,
 ) : BrowserMenuBuilder(items, extras, endOfMenuAlwaysVisible) {
 
     /**

@@ -52,6 +52,7 @@ internal object AppStoreReducer {
             recentTabs = action.recentTabs,
             recentHistory = action.recentHistory,
             recentSyncedTabState = action.recentSyncedTabState,
+            donationReminderAdverts = action.donationReminderAdverts,
         )
         is AppAction.CollectionExpanded -> {
             val newExpandedCollection = state.expandedCollections.toMutableSet()
@@ -87,6 +88,9 @@ internal object AppStoreReducer {
                 recentSyncedTabState = action.state,
             )
         }
+
+        is AppAction.DonationReminderAdvertChange -> state.copy(donationReminderAdverts = action.donationReminderAdverts)
+
         is AppAction.BookmarksChange -> state.copy(bookmarks = action.bookmarks)
         is AppAction.RemoveBookmark -> {
             state.copy(bookmarks = state.bookmarks.filterNot { it.url == action.bookmark.url })

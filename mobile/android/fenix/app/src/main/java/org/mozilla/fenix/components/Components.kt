@@ -218,6 +218,8 @@ class Components(private val context: Context) {
                 orientation = OrientationMode.fromInteger(
                     context.resources.configuration.orientation,
                 ),
+                donationReminderAdverts = core.donationReminderAdvertStorage.cachedAdverts,
+
             ).run { filterState(blocklistHandler) },
             middlewares = listOf(
                 BlocklistMiddleware(blocklistHandler),

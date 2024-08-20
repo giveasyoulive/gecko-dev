@@ -71,6 +71,7 @@ class WebExtensionBrowserMenu internal constructor(
             tab: SessionState? = null,
         ): List<WebExtensionBrowserMenuItem> {
             val menuItems = ArrayList<WebExtensionBrowserMenuItem>()
+
             val extensions = state.extensions.values.toList()
             extensions.filter { it.enabled }.sortedBy { it.name }
                 .forEach { extension ->

@@ -131,14 +131,7 @@ class AboutFragment : Fragment(), AboutPageListener {
         val context = requireContext()
 
         return listOf(
-            AboutPageItem(
-                AboutItem.ExternalLink(
-                    WHATS_NEW,
-                    SupportUtils.WHATS_NEW_URL,
-                ),
-                // Note: Fenix only has release notes for 'Release' versions, NOT 'Beta' & 'Nightly'.
-                getString(R.string.about_whats_new, getString(R.string.firefox)),
-            ),
+
             AboutPageItem(
                 AboutItem.ExternalLink(
                     SUPPORT,
@@ -146,10 +139,7 @@ class AboutFragment : Fragment(), AboutPageListener {
                 ),
                 getString(R.string.about_support),
             ),
-            AboutPageItem(
-                AboutItem.Crashes,
-                getString(R.string.about_crashes),
-            ),
+
             AboutPageItem(
                 AboutItem.ExternalLink(
                     PRIVACY_NOTICE,
@@ -157,13 +147,7 @@ class AboutFragment : Fragment(), AboutPageListener {
                 ),
                 getString(R.string.about_privacy_notice),
             ),
-            AboutPageItem(
-                AboutItem.ExternalLink(
-                    RIGHTS,
-                    SupportUtils.getSumoURLForTopic(context, SupportUtils.SumoTopic.YOUR_RIGHTS),
-                ),
-                getString(R.string.about_know_your_rights),
-            ),
+
             AboutPageItem(
                 AboutItem.ExternalLink(LICENSING_INFO, ABOUT_LICENSE_URL),
                 getString(R.string.about_licensing_information),

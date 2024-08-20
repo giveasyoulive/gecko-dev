@@ -352,6 +352,8 @@ open class FenixApplication : LocaleAwareApplication(), Provider {
                         components.core.passwordsStorage.warmUp()
                         components.core.autofillStorage.warmUp()
 
+                        components.core.donationReminderAdvertStorage.getAdverts()
+
                         // Populate the top site cache to improve initial load experience
                         // of the home fragment when the app is launched to a tab. The actual
                         // database call is not expensive. However, the additional context

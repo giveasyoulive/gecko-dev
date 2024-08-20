@@ -106,6 +106,7 @@ class BlocklistMiddleware(
                 collections = collections,
                 showCollectionPlaceholder = showCollectionPlaceholder,
                 recentSyncedTabState = recentSyncedTabState.filteredByBlocklist().filterContile(),
+                donationReminderAdverts = donationReminderAdverts,
             )
         }
 }

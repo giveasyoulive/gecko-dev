@@ -340,9 +340,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 SettingsFragmentDirections.actionSettingsFragmentToAccessibilityFragment()
             }
 
-            resources.getString(R.string.pref_key_language) -> {
-                SettingsFragmentDirections.actionSettingsFragmentToLocaleSettingsFragment()
-            }
 
             resources.getString(R.string.pref_key_translation) -> {
                 Translations.action.record(Translations.ActionExtra("global_settings_from_preferences"))
@@ -380,21 +377,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 null
             }
 
-            resources.getString(R.string.pref_key_data_choices) -> {
-                SettingsFragmentDirections.actionSettingsFragmentToDataChoicesFragment()
-            }
-
-            /* Advanced preferences */
-            resources.getString(R.string.pref_key_addons) -> {
-                Addons.openAddonsInSettings.record(NoExtras())
-                SettingsFragmentDirections.actionSettingsFragmentToAddonsFragment()
-            }
-
-            // Only displayed when secret settings are enabled
-            resources.getString(R.string.pref_key_install_local_addon) -> {
-                addonFilePicker.launch()
-                null
-            }
 
             // Only displayed when secret settings are enabled
             resources.getString(R.string.pref_key_override_amo_collection) -> {
@@ -547,7 +529,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 (requireContext().components.core.engine.profiler?.isProfilerActive() != null)
         }
         setupCookieBannerPreference()
-        setupInstallAddonFromFilePreference(requireContext().settings())
         setupAmoCollectionOverridePreference(requireContext().settings())
         setupGeckoLogsPreference(requireContext().settings())
         setupAllowDomesticChinaFxaServerPreference()
@@ -755,16 +736,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
                     return super.onPreferenceChange(preference, newValue)
                 }
             }
-        }
-    }
-
-    @VisibleForTesting
-    internal fun setupInstallAddonFromFilePreference(settings: Settings) {
-        with(requirePreference<Preference>(R.string.pref_key_install_local_addon)) {
-            // Below Android 10, the OS doesn't seem to recognize
-            // the "application/x-xpinstall" mime type (for XPI files).
-            isVisible =
-                settings.showSecretDebugMenuThisSession && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
         }
     }
 

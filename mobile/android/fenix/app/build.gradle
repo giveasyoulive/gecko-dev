@@ -3,6 +3,7 @@ import org.apache.tools.ant.util.StringUtils
 
 buildscript {
     repositories {
+        google()
         gradle.mozconfig.substs.GRADLE_MAVEN_REPOSITORIES.each { repository ->
             maven {
                 url repository
@@ -21,6 +22,7 @@ buildscript {
 plugins {
     id "com.jetbrains.python.envs" version "$python_envs_plugin"
     id "com.google.protobuf" version "$protobuf_plugin"
+    id 'com.google.gms.google-services' version '4.4.2'
 }
 
 if (findProject(":geckoview") != null) {
@@ -34,6 +36,7 @@ apply plugin: 'jacoco'
 apply plugin: 'androidx.navigation.safeargs.kotlin'
 apply plugin: 'com.google.android.gms.oss-licenses-plugin'
 apply plugin: 'kotlinx-serialization'
+apply plugin: 'com.google.gms.google-services'
 
 if (findProject(":geckoview") != null) {
     apply from: "${topsrcdir}/mobile/android/gradle/product_flavors.gradle"
@@ -49,6 +52,19 @@ import static org.gradle.api.tasks.testing.TestResult.ResultType
 apply from: 'benchmark.gradle'
 
 android {
+    project.ext.disableOptimization = true
+
+
+    signingConfigs {
+        release {
+            if( gradle.hasProperty('localProperties.build.storeFile') ) {
+                storeFile file(gradle.getProperty("localProperties.build.storeFile"))
+                storePassword gradle.getProperty("localProperties.build.storePassword")
+                keyAlias gradle.getProperty("localProperties.build.keyAlias")
+                keyPassword gradle.getProperty("localProperties.build.keyPassword")
+            }
+        }
+    }
     project.maybeConfigForJetpackBenchmark(it)
     if (project.hasProperty("testBuildType")) {
         // Allowing to configure the test build type via command line flag (./gradlew -PtestBuildType=beta ..)
@@ -57,7 +73,8 @@ android {
     }
 
     defaultConfig {
-        applicationId "org.mozilla"
+        applicationId "org.giveasyoulive"
+
         minSdkVersion config.minSdkVersion
         compileSdk config.compileSdkVersion
         targetSdkVersion config.targetSdkVersion
@@ -110,6 +127,14 @@ android {
         ]
 
         buildConfigField "String[]", "SUPPORTED_LOCALE_ARRAY", getSupportedLocales()
+
+        if( gradle.hasProperty('localProperties.advert.authorization') ) {
+            buildConfigField 'String', 'ADVERT_AUTHORIZATION', gradle.getProperty("localProperties.advert.authorization")
+            buildConfigField 'String', 'ADVERT_USERNAME', gradle.getProperty("localProperties.advert.username")
+            buildConfigField 'String', 'ADVERT_PASSWORD',gradle.getProperty("localProperties.advert.password")
+            buildConfigField 'String', 'ADVERT_SECURITYCODE', gradle.getProperty("localProperties.advert.deviceSecurityCode")
+
+        }
     }
 
     def releaseTemplate = {
@@ -126,6 +151,8 @@ android {
 
         if (gradle.hasProperty("localProperties.autosignReleaseWithDebugKey")) {
             signingConfig signingConfigs.debug
+        } else {
+            signingConfig signingConfigs.release
         }
 
         if (gradle.hasProperty("localProperties.debuggable")) {
@@ -137,7 +164,8 @@ android {
         debug {
             shrinkResources false
             minifyEnabled false
-            applicationIdSuffix ".fenix.debug"
+            applicationIdSuffix ".donationreminder"
+
             resValue "bool", "IS_DEBUG", "true"
             pseudoLocalesEnabled true
         }
@@ -168,8 +196,7 @@ android {
             ])
         }
         release releaseTemplate >> {
-            buildConfigField "boolean", "USE_RELEASE_VERSIONING", "true"
-            applicationIdSuffix ".firefox"
+            applicationIdSuffix ".donationreminder"
             def deepLinkSchemeValue = "fenix"
             buildConfigField "String", "DEEP_LINK_SCHEME", "\"$deepLinkSchemeValue\""
             manifestPlaceholders.putAll([
@@ -180,7 +207,7 @@ android {
                     // fatal consequences. For example see:
                     //  - https://issuetracker.google.com/issues/36924841
                     //  - https://issuetracker.google.com/issues/36905922
-                    "sharedUserId": "org.mozilla.firefox.sharedID",
+                    "sharedUserId": "org.giveasyoulive.donationreminder.sharedID",
                     "deepLinkScheme": deepLinkSchemeValue,
             ])
         }
@@ -636,6 +663,7 @@ dependencies {
     implementation project(':feature-webcompat')
     implementation project(':feature-webnotifications')
     implementation project(':feature-webcompat-reporter')
+    implementation project(':feature-donationreminder')
 
     implementation project(':service-pocket')
     implementation project(':service-contile')
@@ -668,6 +696,9 @@ dependencies {
     implementation project(':lib-push-firebase')
     implementation project(':lib-state')
     implementation project(':lib-dataprotect')
+    implementation platform('com.google.firebase:firebase-bom:33.1.2')
+    implementation 'com.google.firebase:firebase-messaging-ktx'
+
     testImplementation project(':support-test-fakes')
 
     debugImplementation ComponentsDependencies.leakcanary
@@ -721,6 +752,7 @@ dependencies {
 
     implementation FenixDependencies.androidx_profileinstaller
 
+    implementation 'com.github.bumptech.glide:glide:4.16.0'
     constraints {
         implementation (ComponentsDependencies.androidx_tracing) {
             because 'AndroidX Test gets force-downgraded to 1.0.0 and breaks otherwise'

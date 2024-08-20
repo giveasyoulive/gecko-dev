@@ -2180,7 +2180,7 @@
     <!-- Default browser card title -->
     <string name="default_browser_experiment_card_title">Switch your default browser</string>
     <!-- Default browser card text -->
-    <string name="default_browser_experiment_card_text">Set links from websites, emails, and messages to open automatically in Firefox.</string>
+    <string name="default_browser_experiment_card_text">Set links from websites, emails, and messages to open automatically in Give as you Live.</string>
 
     <!-- Content description for close button in collection placeholder. -->
     <string name="remove_home_collection_placeholder_content_description">Remove</string>
@@ -2736,4 +2736,38 @@
     <!-- Beta Label Component !-->
     <!-- Text shown as a label or tag to indicate a feature or area is still undergoing active development. Note that here "Beta" should not be translated, as it is used as an icon styled element. -->
     <string name="beta_feature">BETA</string>
+
+    <string name="notification_sales_channel_name">Sales</string>
+
+
+
+    <string name="onboarding_dr_desc1">With this app you can generate free donations for your charity every time you shop online at over 5,500 stores.\n\nLet\'s get started!</string>
+    <string name="onboarding_dr_desc2">Tap on the Give as you Live heart in the top right corner of your screen to display your account panel.</string>
+    <string name="onboarding_dr_desc3">Here you can search for stores, access your favourite retailers, and see how much you\'ve raised for your charity so far.\n\nTap on a retailer or search for a store in the search bar. When you tap on the store, you\'ll be directed to their website.</string>
+    <string name="onboarding_dr_desc4">The Give as you Live Online heart icon will turn green to let you know it is activated, and you\'ll be notified that you are raising free funds.</string>
+    <string name="onboarding_dr_desc5">We\'ll send you a notification within 7 days (usually sooner!) of your purchase to let you know exactly how much your purchase has raised for your chosen charity.</string>
+    <string name="onboarding_dr_jl_text">John Lewis</string>
+    <string name="onboarding_dr_jl_thank_you_text">John Lewis Thank you</string>
+    <string name="onboarding_dr_notification">Notification</string>
+    <string name="onboarding_dr_phone">Phone home screen</string>
+    <string name="onboarding_dr_pulse_heart_cart_text">Heart cart</string>
+    <string name="onboarding_dr_pulse_jl_text">John Lewis</string>
+    <string name="onboarding_dr_search_image_text">Search</string>
+    <string name="onboarding_dr_sidebar_image_text">Sidebar</string>
+    <string name="onboarding_dr_sign_in">Log in</string>
+    <string name="onboarding_dr_sign_up">Sign up</string>
+    <string name="onboarding_dr_start_image_text">Welcome</string>
+    <string name="onboarding_dr_step1">Next ></string>
+    <string name="onboarding_dr_step2">Next ></string>
+    <string name="onboarding_dr_step3">Next ></string>
+    <string name="onboarding_dr_step4">Next ></string>
+    <string name="onboarding_dr_step5">Start shopping &amp; raising ></string>
+    <string name="onboarding_dr_title1">Welcome to Give as you Live Online</string>
+    <string name="onboarding_dr_title2">The heart icon</string>
+    <string name="onboarding_dr_title3">Your account panel</string>
+    <string name="onboarding_dr_title4">Search, shop &amp; raise</string>
+    <string name="onboarding_dr_title5">Thank you!</string>
+    <string name="onboarding_finish">Start browsing</string>
+
+
 </resources>

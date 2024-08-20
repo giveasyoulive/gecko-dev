@@ -32,6 +32,7 @@ import org.mozilla.fenix.home.recentvisits.view.RecentVisitsHeaderViewHolder
 import org.mozilla.fenix.home.recentvisits.view.RecentlyVisitedViewHolder
 import org.mozilla.fenix.home.sessioncontrol.viewholders.CollectionHeaderViewHolder
 import org.mozilla.fenix.home.sessioncontrol.viewholders.CustomizeHomeButtonViewHolder
+import org.mozilla.fenix.home.sessioncontrol.viewholders.DonationReminderAdvertViewHolder
 import org.mozilla.fenix.home.sessioncontrol.viewholders.NoCollectionsMessageViewHolder
 import org.mozilla.fenix.home.sessioncontrol.viewholders.PrivateBrowsingDescriptionViewHolder
 import org.mozilla.fenix.home.sessioncontrol.viewholders.onboarding.MessageCardViewHolder
@@ -171,6 +172,9 @@ sealed class AdapterItem(@LayoutRes val viewType: Int) {
 
     object BottomSpacer : AdapterItem(BottomSpacerViewHolder.LAYOUT_ID)
 
+    object DonationReminderAdverts : AdapterItem(DonationReminderAdvertViewHolder.LAYOUT_ID)
+
+
     /**
      * True if this item represents the same value as other. Used by [AdapterItemDiffCallback].
      */
@@ -207,6 +211,11 @@ class SessionControlAdapter(
     @SuppressWarnings("ComplexMethod", "LongMethod", "ReturnCount")
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         when (viewType) {
+            DonationReminderAdvertViewHolder.LAYOUT_ID -> return DonationReminderAdvertViewHolder(
+                composeView = ComposeView(parent.context),
+                viewLifecycleOwner,
+                interactor = interactor
+            )
             CustomizeHomeButtonViewHolder.LAYOUT_ID -> return CustomizeHomeButtonViewHolder(
                 composeView = ComposeView(parent.context),
                 viewLifecycleOwner = viewLifecycleOwner,
@@ -317,6 +326,7 @@ class SessionControlAdapter(
 
     override fun onViewRecycled(holder: RecyclerView.ViewHolder) {
         when (holder) {
+            is DonationReminderAdvertViewHolder,
             is CollectionHeaderViewHolder,
             is CustomizeHomeButtonViewHolder,
             is RecentlyVisitedViewHolder,
@@ -399,6 +409,7 @@ class SessionControlAdapter(
                 val (collection, tab, isLastTab) = item as AdapterItem.TabInCollectionItem
                 holder.bindSession(collection, tab, isLastTab)
             }
+            is DonationReminderAdvertViewHolder,
             is TopSitesViewHolder,
             is RecentlyVisitedViewHolder,
             is BookmarksViewHolder,

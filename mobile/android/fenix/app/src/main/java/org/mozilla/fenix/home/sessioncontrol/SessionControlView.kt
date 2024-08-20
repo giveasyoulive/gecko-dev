@@ -19,6 +19,7 @@ import mozilla.components.service.pocket.PocketStory
 import org.mozilla.fenix.browser.browsingmode.BrowsingMode
 import org.mozilla.fenix.components.appstate.AppAction
 import org.mozilla.fenix.components.appstate.AppState
+import org.mozilla.fenix.components.feature.giveasyoulive.model.DonationReminderAdvert
 import org.mozilla.fenix.ext.components
 import org.mozilla.fenix.ext.settings
 import org.mozilla.fenix.ext.shouldShowRecentSyncedTabs
@@ -47,7 +48,9 @@ internal fun normalModeAdapterItems(
     recentVisits: List<RecentlyVisitedItem>,
     pocketStories: List<PocketStory>,
     firstFrameDrawn: Boolean = false,
-): List<AdapterItem> {
+    donationReminderAdverts: List<DonationReminderAdvert>,
+
+    ): List<AdapterItem> {
     val items = mutableListOf<AdapterItem>()
     var shouldShowCustomizeHome = false
 
@@ -56,6 +59,10 @@ internal fun normalModeAdapterItems(
 
     nimbusMessageCard?.let {
         items.add(AdapterItem.NimbusMessageCard(it))
+    }
+
+    if(donationReminderAdverts.isNotEmpty()) {
+        items.add(AdapterItem.DonationReminderAdverts)
     }
 
     if (settings.showTopSitesFeature && topSites.isNotEmpty()) {
@@ -149,6 +156,7 @@ private fun AppState.toAdapterList(settings: Settings): List<AdapterItem> = when
         recentHistory,
         pocketStories,
         firstFrameDrawn,
+        donationReminderAdverts,
     )
     BrowsingMode.Private -> privateModeAdapterItems()
 }

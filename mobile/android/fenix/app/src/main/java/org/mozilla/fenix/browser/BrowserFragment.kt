@@ -30,6 +30,7 @@ import mozilla.components.feature.contextmenu.ContextMenuCandidate
 import mozilla.components.feature.readerview.ReaderViewFeature
 import mozilla.components.feature.tab.collections.TabCollection
 import mozilla.components.feature.tabs.WindowFeature
+import mozilla.components.feature.toolbar.WebExtensionToolbarFeature
 import mozilla.components.support.base.feature.UserInteractionHandler
 import mozilla.components.support.base.feature.ViewBoundFeatureWrapper
 import mozilla.components.support.utils.ext.isLandscape
@@ -59,7 +60,7 @@ import org.mozilla.fenix.shopping.DefaultShoppingExperienceFeature
 import org.mozilla.fenix.shopping.ReviewQualityCheckFeature
 import org.mozilla.fenix.shortcut.PwaOnboardingObserver
 import org.mozilla.fenix.theme.ThemeManager
-
+import androidx.drawerlayout.widget.DrawerLayout
 /**
  * Fragment used for browsing the web within the main app.
  */
@@ -67,6 +68,7 @@ import org.mozilla.fenix.theme.ThemeManager
 class BrowserFragment : BaseBrowserFragment(), UserInteractionHandler {
     private val windowFeature = ViewBoundFeatureWrapper<WindowFeature>()
     private val openInAppOnboardingObserver = ViewBoundFeatureWrapper<OpenInAppOnboardingObserver>()
+    private val webExtToolbarFeature = ViewBoundFeatureWrapper<WebExtensionToolbarFeature>()
     private val reviewQualityCheckFeature = ViewBoundFeatureWrapper<ReviewQualityCheckFeature>()
     private val translationsBinding = ViewBoundFeatureWrapper<TranslationsBinding>()
 
@@ -183,6 +185,14 @@ class BrowserFragment : BaseBrowserFragment(), UserInteractionHandler {
             view = view,
         )
 
+        webExtToolbarFeature.set(
+            feature = WebExtensionToolbarFeature(
+                browserToolbarView.view,
+                store = components.core.store
+            ),
+            owner = this,
+            view = view
+        )
         if (context.settings().shouldShowOpenInAppCfr) {
             openInAppOnboardingObserver.set(
                 feature = OpenInAppOnboardingObserver(

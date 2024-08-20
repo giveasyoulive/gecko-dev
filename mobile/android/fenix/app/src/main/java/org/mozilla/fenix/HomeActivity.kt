@@ -18,6 +18,7 @@ import android.text.TextUtils
 import android.text.format.DateUtils
 import android.util.AttributeSet
 import android.view.ActionMode
+import android.view.Gravity
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -32,6 +33,8 @@ import androidx.appcompat.app.ActionBar
 import androidx.appcompat.widget.Toolbar
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.customview.widget.ViewDragHelper
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
@@ -87,6 +90,7 @@ import org.mozilla.fenix.GleanMetrics.SplashScreen
 import org.mozilla.fenix.GleanMetrics.StartOnHome
 import org.mozilla.fenix.addons.ExtensionsProcessDisabledBackgroundController
 import org.mozilla.fenix.addons.ExtensionsProcessDisabledForegroundController
+import org.mozilla.fenix.addons.WebExtensionActionSidebarFragment
 import org.mozilla.fenix.browser.browsingmode.BrowsingMode
 import org.mozilla.fenix.browser.browsingmode.BrowsingModeManager
 import org.mozilla.fenix.browser.browsingmode.DefaultBrowsingModeManager
@@ -115,6 +119,7 @@ import org.mozilla.fenix.ext.settings
 import org.mozilla.fenix.extension.WebExtensionPromptFeature
 import org.mozilla.fenix.home.intent.AssistIntentProcessor
 import org.mozilla.fenix.home.intent.CrashReporterIntentProcessor
+import org.mozilla.fenix.home.intent.DonationReminderIntentProcessor
 import org.mozilla.fenix.home.intent.HomeDeepLinkIntentProcessor
 import org.mozilla.fenix.home.intent.OpenBrowserIntentProcessor
 import org.mozilla.fenix.home.intent.OpenPasswordManagerIntentProcessor
@@ -202,6 +207,8 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
 
     private val externalSourceIntentProcessors by lazy {
         listOf(
+            DonationReminderIntentProcessor(this),
+
             HomeDeepLinkIntentProcessor(this),
             SpeechProcessingIntentProcessor(this, components.core.store),
             AssistIntentProcessor(),
@@ -1017,7 +1024,7 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
     ) {
         openToBrowser(from, customTabSessionId)
         load(
-            searchTermOrURL = searchTermOrURL,
+            searchTermOrURL = if(searchTermOrURL == "about:license") "https://www.giveasyoulive.com/app_android_license.html" else searchTermOrURL,
             newTab = newTab,
             engine = engine,
             forceSearch = forceSearch,
@@ -1199,11 +1206,101 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
     }
 
     private fun openPopup(webExtensionState: WebExtensionState) {
+
+
+        if(webExtensionState.id == "gayl_firefox@everyclick.com") {
+            Logger.debug("openPopup  (WebExtensionState=$webExtensionState)")
+
+            openSidebar(webExtensionState)
+
+            return
+        }
+
+
         val action = NavGraphDirections.actionGlobalWebExtensionActionPopupFragment(
             webExtensionId = webExtensionState.id,
             webExtensionTitle = webExtensionState.name,
         )
         navHost.navController.navigate(action)
+    }
+
+    /**
+     * Open GAYL sidebar
+     */
+    private fun openSidebar(webExtensionState: WebExtensionState) {
+
+        val drawerLayout =
+            findViewById<View>(R.id.drawerLy) as DrawerLayout
+
+        // Close draw if open
+        if (drawerLayout.isDrawerOpen(Gravity.RIGHT)) {
+            closeSidebar(drawerLayout)
+            return
+        }
+
+        // Detect click outside sidebar
+        drawerLayout.addDrawerListener(object: DrawerLayout.DrawerListener {
+            override fun onDrawerSlide(drawerView: View, slideOffset: Float) {
+            }
+            override fun onDrawerStateChanged(newState: Int) {
+
+                if(newState == ViewDragHelper.STATE_SETTLING && drawerLayout.isDrawerOpen(Gravity.RIGHT)) {
+                    closeSidebar(drawerLayout)
+                }
+
+            }
+            override fun onDrawerOpened(drawerView: View) {}
+            override fun onDrawerClosed(drawerView: View) {}
+        })
+
+        // Create the drawer with web extension
+        val bundle = Bundle()
+        bundle.putString("webExtensionId", webExtensionState.id)
+        bundle.putString("webExtensionTitle", webExtensionState.name)
+
+        // First time fragment building is slow.
+        var fragment = WebExtensionActionSidebarFragment()
+        fragment.arguments = bundle
+
+        val transaction = supportFragmentManager.beginTransaction()
+        transaction.replace(R.id.right_drawer, fragment)
+        //transaction.addToBackStack(null)
+        transaction.commit()
+
+        // Listen for sidebar actions
+        fragment.setSidebarListener(object :
+            WebExtensionActionSidebarFragment.SidebarListener {
+
+            val drawerLayout =
+                findViewById<View>(R.id.drawerLy) as DrawerLayout
+
+            override fun onCloseSidebar() {
+                closeSidebar(drawerLayout)
+            }
+
+            override fun onOpenSidebar() {
+                drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
+                drawerLayout.openDrawer(Gravity.RIGHT)
+
+            }
+
+        })
+    }
+
+    /**
+     * Close GAYL sidebar
+     */
+    fun closeSidebar(drawerLayout: DrawerLayout) {
+
+        drawerLayout.closeDrawer(Gravity.RIGHT)
+
+        // Remove the fragment on drawer close
+        supportFragmentManager.findFragmentById(R.id.right_drawer)?.let {
+            supportFragmentManager
+                .beginTransaction()
+                .remove(it)
+                .commit()
+        }
     }
 
     /**

@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+   - License, v. 2.0. If a copy of the MPL was not distributed with this
+   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:layout_gravity="center_horizontal"
+        tools:ignore="AndroidSrcXmlDetector">
+
+
+        <RelativeLayout
+            android:layout_width="413dp"
+            android:layout_height="355dp"
+            android:layout_gravity="center_horizontal">
+
+
+            <!-- Step 1 -->
+            <ImageView
+                android:id="@+id/onboarding_dr_start"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/onboarding_dr_start_image_text"
+                android:src="@drawable/ic_onboarding_dr_start"
+                android:visibility="visible"/>
+
+            <!-- Step 2 & 3-->
+            <ImageView
+                android:id="@+id/onboarding_dr_search"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/onboarding_dr_search_image_text"
+                android:src="@drawable/ic_onboarding_dr_search"
+                android:visibility="invisible" />
+
+            <ImageView
+                android:id="@+id/onboarding_dr_sidebar_fade"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/onboarding_dr_sidebar_image_text"
+                android:src="@drawable/ic_onboarding_dr_sidebar_fade"
+                android:visibility="invisible" />
+
+
+            <ImageView
+                android:id="@+id/onboarding_dr_sidebar"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/onboarding_dr_sidebar_image_text"
+                android:src="@drawable/ic_onboarding_dr_sidebar"
+                android:visibility="invisible" />
+
+
+            <!-- Step 4 -->
+
+            <ImageView
+                android:id="@+id/onboarding_dr_jl"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/onboarding_dr_jl_text"
+                android:src="@drawable/ic_onboarding_dr_gayl_jl"
+                android:visibility="invisible" />
+
+            <ImageView
+                android:id="@+id/onboarding_dr_jl_thank_you"
+
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/onboarding_dr_jl_thank_you_text"
+                android:src="@drawable/ic_onboarding_dr_jl_thank_you"
+                android:visibility="invisible" />
+
+
+            <!-- Step 5 -->
+            <ImageView
+                android:id="@+id/onboarding_dr_phone_home"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/onboarding_dr_phone"
+                android:src="@drawable/ic_onboarding_dr_phone"
+                android:visibility="invisible" />
+
+            <ImageView
+                android:id="@+id/onboarding_dr_notification"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/onboarding_dr_notification"
+                android:src="@drawable/ic_onboarding_dr_notification"
+                android:visibility="invisible" />
+
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/onboarding_dr_phone"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_onboarding_dr_mask" />
+
+
+            <ImageView
+                android:id="@+id/onboarding_dr_pulse_heart_cart"
+                android:layout_width="1dp"
+                android:layout_height="1dp"
+                android:layout_marginStart="312dp"
+                android:layout_marginTop="65dp"
+                android:contentDescription="@string/onboarding_dr_pulse_heart_cart_text"
+                android:src="@drawable/circle"
+                android:visibility="invisible" />
+
+
+            <ImageView
+                android:id="@+id/onboarding_dr_pulse_heart_cart1"
+                android:layout_width="1dp"
+                android:layout_height="1dp"
+                android:layout_marginStart="312dp"
+                android:layout_marginTop="65dp"
+                android:contentDescription="@string/onboarding_dr_pulse_heart_cart_text"
+                android:src="@drawable/circle"
+                android:visibility="invisible" />
+
+
+            <ImageView
+                android:id="@+id/onboarding_dr_pulse_jl"
+                android:layout_width="1dp"
+                android:layout_height="1dp"
+                android:layout_marginStart="212dp"
+                android:layout_marginTop="209dp"
+                android:contentDescription="@string/onboarding_dr_pulse_jl_text"
+                android:src="@drawable/circle"
+                android:visibility="invisible" />
+
+            <ImageView
+                android:id="@+id/onboarding_dr_pulse_jl1"
+                android:layout_width="1dp"
+                android:layout_height="1dp"
+                android:layout_marginStart="212dp"
+                android:layout_marginTop="209dp"
+                android:contentDescription="@string/onboarding_dr_pulse_jl_text"
+                android:src="@drawable/circle"
+                android:visibility="invisible" />
+
+        </RelativeLayout>
+
+
+        <TextView
+            android:id="@+id/onboarding_dr_title"
+            android:layout_width="340dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="20dp"
+            android:textSize="18dp"
+            android:scrollbars = "vertical"
+            android:fontFamily="@font/oxygen_bold"
+            android:textColor="?android:textColorPrimary"
+            android:text="@string/onboarding_dr_title1"
+            android:textAlignment="center" />
+
+
+        <TextView
+            android:id="@+id/onboarding_dr_desc"
+            android:layout_width="340dp"
+            android:layout_height="130dp"
+            android:layout_marginLeft="10dp"
+            android:layout_marginRight="10dp"
+            android:layout_marginBottom="10dp"
+            android:layout_gravity="center_horizontal"
+            android:fontFamily="@font/oxygen_regular"
+            android:textColor="?android:textColorPrimary"
+            android:text="@string/onboarding_dr_desc1" />
+
+        <LinearLayout
+            android:id="@+id/onboarding_dr_step_layout"
+            android:visibility="visible"
+            android:layout_marginLeft="10dp"
+            android:layout_marginRight="10dp"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginBottom="10dp"
+            android:layout_weight="1"
+            android:gravity="center|bottom"
+            android:orientation="vertical">
+
+            <Button
+                android:id="@+id/onboarding_dr_next_step_button"
+                android:layout_width="340dp"
+                android:layout_height="45dp"
+                android:layout_gravity="center_horizontal|center"
+                android:textAlignment="center"
+                android:alpha="0.7"
+                android:background="@drawable/round_shape_green_button"
+                android:enabled="false"
+                android:fontFamily="@font/oxygen_regular"
+                android:text="@string/onboarding_dr_step1"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                tools:ignore="ButtonStyleXmlDetector" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>
+

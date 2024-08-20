@@ -111,20 +111,6 @@ class SettingsFragmentTest {
 
         advanceUntilIdle()
 
-        val preference = settingsFragment.findPreference<Preference>(
-            settingsFragment.getPreferenceKey(R.string.pref_key_install_local_addon),
-        )
-
-        settingsFragment.setupInstallAddonFromFilePreference(mockk(relaxed = true))
-        assertNotNull(preference)
-        assertFalse(preference!!.isVisible)
-
-        val settings: Settings = mockk(relaxed = true)
-
-        every { settings.showSecretDebugMenuThisSession } returns true
-        settingsFragment.setupInstallAddonFromFilePreference(settings)
-        assertTrue(preference.isVisible)
-        unmockkObject(Config)
     }
 
     @Test
@@ -143,11 +129,6 @@ class SettingsFragmentTest {
             settingsFragment.getPreferenceKey(R.string.pref_key_install_local_addon),
         )
 
-        val settings: Settings = mockk(relaxed = true)
-
-        every { settings.showSecretDebugMenuThisSession } returns true
-        settingsFragment.setupInstallAddonFromFilePreference(settings)
-        assertFalse(preference!!.isVisible)
     }
 
     @Test
