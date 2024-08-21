@@ -196,6 +196,7 @@ android {
             ])
         }
         release releaseTemplate >> {
+            buildConfigField "boolean", "USE_RELEASE_VERSIONING", "true"
             applicationIdSuffix ".donationreminder"
             def deepLinkSchemeValue = "fenix"
             buildConfigField "String", "DEEP_LINK_SCHEME", "\"$deepLinkSchemeValue\""
@@ -210,6 +211,7 @@ android {
                     "sharedUserId": "org.giveasyoulive.donationreminder.sharedID",
                     "deepLinkScheme": deepLinkSchemeValue,
             ])
+
         }
         benchmark releaseTemplate >> {
             initWith buildTypes.nightly
@@ -358,6 +360,7 @@ android.applicationVariants.configureEach { variant ->
         def versionName = variant.buildType.name == 'nightly' ?
                 "${Config.nightlyVersionName(project)}" :
                 "${Config.releaseVersionName(project)}"
+
         println("versionName override: $versionName")
 
         variant.outputs.each { output ->
@@ -370,6 +373,9 @@ android.applicationVariants.configureEach { variant ->
             // channels that never shipped a Fennec build.
             def versionCodeOverride = Config.generateFennecVersionCode(arch, aab)
 
+            // Keep versionCode in line with DonationReminder App
+            versionCodeOverride = versionCodeOverride + 140000
+
             println("versionCode for $abi = $versionCodeOverride, isMozillaOnline = $isMozillaOnline")
 
             if (versionName != null) {
@@ -377,13 +383,9 @@ android.applicationVariants.configureEach { variant ->
             }
             output.versionCodeOverride = versionCodeOverride
         }
-    } else if (gradle.hasProperty("localProperties.branchBuild.fenix.version")) {
-        def versionName = gradle.getProperty("localProperties.branchBuild.fenix.version")
-        println("versionName override: $versionName")
-        variant.outputs.each { output ->
-            output.versionNameOverride = versionName
-        }
     }
+
+
 
 // -------------------------------------------------------------------------------------------------
 // BuildConfig: Set variables for Sentry, Crash Reporting, and Telemetry

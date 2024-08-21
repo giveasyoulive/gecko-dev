@@ -51,6 +51,7 @@ class BlocklistMiddlewareTest {
                 bookmarks = listOf(updatedBookmark),
                 recentHistory = appStore.state.recentHistory,
                 recentSyncedTabState = appStore.state.recentSyncedTabState,
+                donationReminderAdverts = appStore.state.donationReminderAdverts,
             ),
         ).joinBlocking()
 
@@ -78,6 +79,8 @@ class BlocklistMiddlewareTest {
                 bookmarks = listOf(updatedBookmark),
                 recentHistory = appStore.state.recentHistory,
                 recentSyncedTabState = appStore.state.recentSyncedTabState,
+                donationReminderAdverts = appStore.state.donationReminderAdverts,
+
             ),
         ).joinBlocking()
 
@@ -105,7 +108,9 @@ class BlocklistMiddlewareTest {
                 bookmarks = listOf(updatedBookmark),
                 recentHistory = appStore.state.recentHistory,
                 recentSyncedTabState = appStore.state.recentSyncedTabState,
-            ),
+                donationReminderAdverts = appStore.state.donationReminderAdverts,
+
+                ),
         ).joinBlocking()
 
         assertEquals(updatedBookmark, appStore.state.bookmarks[0])
@@ -132,7 +137,9 @@ class BlocklistMiddlewareTest {
                 bookmarks = listOf(updatedBookmark),
                 recentHistory = appStore.state.recentHistory,
                 recentSyncedTabState = appStore.state.recentSyncedTabState,
-            ),
+                donationReminderAdverts = appStore.state.donationReminderAdverts,
+
+                ),
         ).joinBlocking()
 
         assertTrue(appStore.state.bookmarks.isEmpty())
@@ -161,7 +168,9 @@ class BlocklistMiddlewareTest {
                 bookmarks = updatedBookmarks,
                 recentHistory = appStore.state.recentHistory,
                 recentSyncedTabState = appStore.state.recentSyncedTabState,
-            ),
+                donationReminderAdverts = appStore.state.donationReminderAdverts,
+
+                ),
         ).joinBlocking()
 
         assertTrue(appStore.state.bookmarks.isEmpty())
@@ -199,7 +208,9 @@ class BlocklistMiddlewareTest {
                 bookmarks = updatedBookmarks,
                 recentHistory = appStore.state.recentHistory,
                 recentSyncedTabState = appStore.state.recentSyncedTabState,
-            ),
+                donationReminderAdverts = appStore.state.donationReminderAdverts,
+
+                ),
         ).joinBlocking()
 
         assertEquals(unblockedBookmark, appStore.state.bookmarks[0])
@@ -252,6 +263,7 @@ class BlocklistMiddlewareTest {
                 bookmarks = listOf(updatedBookmark),
                 recentHistory = appStore.state.recentHistory,
                 recentSyncedTabState = appStore.state.recentSyncedTabState,
+                donationReminderAdverts = appStore.state.donationReminderAdverts,
             ),
         ).joinBlocking()
 
@@ -280,7 +292,9 @@ class BlocklistMiddlewareTest {
                 bookmarks = listOf(updatedBookmark),
                 recentHistory = appStore.state.recentHistory,
                 recentSyncedTabState = appStore.state.recentSyncedTabState,
-            ),
+                donationReminderAdverts = appStore.state.donationReminderAdverts,
+
+                ),
         ).joinBlocking()
 
         assertTrue(appStore.state.bookmarks.isEmpty())
@@ -308,6 +322,7 @@ class BlocklistMiddlewareTest {
                 bookmarks = listOf(updatedBookmark),
                 recentHistory = appStore.state.recentHistory,
                 recentSyncedTabState = appStore.state.recentSyncedTabState,
+                donationReminderAdverts = appStore.state.donationReminderAdverts,
             ),
         ).joinBlocking()
 

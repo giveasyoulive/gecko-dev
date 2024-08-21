@@ -4,6 +4,7 @@
 
 package org.giveasyoulive.components.feature.donationreminder
 
+import android.content.Context
 import mozilla.components.concept.engine.Engine
 import mozilla.components.concept.engine.webextension.WebExtension
 import mozilla.components.support.test.argumentCaptor
@@ -26,9 +27,13 @@ class DonationReminderFeatureTest {
     @Test
     fun `installs the webextension`() {
         val engine: Engine = mock()
+        val context: Context = mock()
 
         val donationReminderFeature = spy(DonationReminderFeature)
-        donationReminderFeature.install(engine)
+        donationReminderFeature.install(
+            engine,
+            context,
+        )
 
         val onSuccess = argumentCaptor<((WebExtension) -> Unit)>()
         val onError = argumentCaptor<((Throwable) -> Unit)>()

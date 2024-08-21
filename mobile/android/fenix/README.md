@@ -55,11 +55,11 @@ Please use the following variants for the donation reminder project. You can sel
 debug
 release
 
-## local.properties
-
+## gradle.properties
 Please add the version of the donation reminder to this file:
-branchBuild.fenix.version=4.0.0000
+VersionName=2.0.0000
 
+## local.properties
 If you are running debug builds add the following line:
 debuggable=true
 
