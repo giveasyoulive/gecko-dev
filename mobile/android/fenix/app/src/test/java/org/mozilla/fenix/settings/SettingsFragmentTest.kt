@@ -125,10 +125,11 @@ class SettingsFragmentTest {
 
         advanceUntilIdle()
 
+        /*
         val preference = settingsFragment.findPreference<Preference>(
             settingsFragment.getPreferenceKey(R.string.pref_key_install_local_addon),
         )
-
+*/
     }
 
     @Test

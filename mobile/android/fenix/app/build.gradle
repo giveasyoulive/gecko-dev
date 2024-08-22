@@ -374,7 +374,7 @@ android.applicationVariants.configureEach { variant ->
             def versionCodeOverride = Config.generateFennecVersionCode(arch, aab)
 
             // Keep versionCode in line with DonationReminder App
-            versionCodeOverride = versionCodeOverride + 140030
+            versionCodeOverride = versionCodeOverride + 140050
 
             println("versionCode for $abi = $versionCodeOverride, isMozillaOnline = $isMozillaOnline")
 

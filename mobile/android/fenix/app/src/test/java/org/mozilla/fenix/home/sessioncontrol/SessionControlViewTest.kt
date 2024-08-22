@@ -14,6 +14,7 @@ import mozilla.components.service.pocket.PocketStory.PocketRecommendedStory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.mozilla.fenix.components.feature.giveasyoulive.model.DonationReminderAdvert
 import org.mozilla.fenix.home.bookmarks.Bookmark
 import org.mozilla.fenix.home.recentvisits.RecentlyVisitedItem.RecentHistoryGroup
 import org.mozilla.fenix.utils.Settings
@@ -29,6 +30,7 @@ class SessionControlViewTest {
         val bookmarks = listOf(Bookmark())
         val historyMetadata = emptyList<RecentHistoryGroup>()
         val pocketStories = emptyList<PocketStory>()
+        val donationReminderAdverts = emptyList<DonationReminderAdvert>()
 
         every { settings.showTopSitesFeature } returns true
         every { settings.showRecentTabsFeature } returns true
@@ -48,6 +50,7 @@ class SessionControlViewTest {
             showRecentSyncedTab = false,
             recentVisits = historyMetadata,
             pocketStories = pocketStories,
+            donationReminderAdverts = donationReminderAdverts,
         )
 
         assertTrue(results[0] is AdapterItem.TopPlaceholderItem)
@@ -66,6 +69,7 @@ class SessionControlViewTest {
         val historyMetadata = emptyList<RecentHistoryGroup>()
         val pocketStories = emptyList<PocketStory>()
         val nimbusMessageCard: Message = mockk()
+        val donationReminderAdverts = emptyList<DonationReminderAdvert>()
 
         every { settings.showTopSitesFeature } returns true
         every { settings.showRecentTabsFeature } returns true
@@ -85,6 +89,8 @@ class SessionControlViewTest {
             showRecentSyncedTab = false,
             historyMetadata,
             pocketStories,
+            false,
+            donationReminderAdverts,
         )
 
         assertTrue(results.contains(AdapterItem.NimbusMessageCard(nimbusMessageCard)))
@@ -99,6 +105,7 @@ class SessionControlViewTest {
         val bookmarks = listOf<Bookmark>()
         val historyMetadata = emptyList<RecentHistoryGroup>()
         val pocketStories = emptyList<PocketStory>()
+        val donationReminderAdverts = emptyList<DonationReminderAdvert>()
 
         every { settings.showTopSitesFeature } returns true
         every { settings.showRecentTabsFeature } returns true
@@ -118,6 +125,8 @@ class SessionControlViewTest {
             showRecentSyncedTab = false,
             historyMetadata,
             pocketStories,
+            false,
+            donationReminderAdverts,
         )
 
         assertTrue(results[0] is AdapterItem.TopPlaceholderItem)
@@ -135,6 +144,7 @@ class SessionControlViewTest {
         val bookmarks = listOf<Bookmark>()
         val historyMetadata = listOf(RecentHistoryGroup("title", emptyList()))
         val pocketStories = emptyList<PocketStory>()
+        val donationReminderAdverts = emptyList<DonationReminderAdvert>()
 
         every { settings.showTopSitesFeature } returns true
         every { settings.showRecentTabsFeature } returns true
@@ -154,6 +164,9 @@ class SessionControlViewTest {
             showRecentSyncedTab = false,
             historyMetadata,
             pocketStories,
+            false,
+            donationReminderAdverts,
+
         )
 
         assertTrue(results[0] is AdapterItem.TopPlaceholderItem)
@@ -171,6 +184,7 @@ class SessionControlViewTest {
         val bookmarks = listOf<Bookmark>()
         val historyMetadata = emptyList<RecentHistoryGroup>()
         val pocketStories = listOf(PocketRecommendedStory("", "", "", "", "", 1, 1))
+        val donationReminderAdverts = emptyList<DonationReminderAdvert>()
 
         every { settings.showTopSitesFeature } returns true
         every { settings.showRecentTabsFeature } returns true
@@ -191,6 +205,7 @@ class SessionControlViewTest {
             historyMetadata,
             pocketStories,
             true,
+            donationReminderAdverts,
         )
 
         assertTrue(results[0] is AdapterItem.TopPlaceholderItem)
@@ -213,6 +228,7 @@ class SessionControlViewTest {
             historyMetadata,
             pocketStories,
             false,
+            donationReminderAdverts,
         )
 
         assertTrue(results2[0] is AdapterItem.TopPlaceholderItem)
@@ -228,6 +244,7 @@ class SessionControlViewTest {
         val bookmarks = listOf<Bookmark>()
         val historyMetadata = emptyList<RecentHistoryGroup>()
         val pocketStories = emptyList<PocketStory>()
+        val donationReminderAdverts = emptyList<DonationReminderAdvert>()
 
         every { settings.showTopSitesFeature } returns true
         every { settings.showRecentTabsFeature } returns true
@@ -247,6 +264,8 @@ class SessionControlViewTest {
             showRecentSyncedTab = false,
             historyMetadata,
             pocketStories,
+            false,
+            donationReminderAdverts,
         )
         assertEquals(results.size, 2)
         assertTrue(results[0] is AdapterItem.TopPlaceholderItem)
@@ -264,6 +283,7 @@ class SessionControlViewTest {
         val bookmarks = listOf<Bookmark>(mockk())
         val historyMetadata = listOf<RecentHistoryGroup>(mockk())
         val pocketStories = listOf<PocketStory>(mockk())
+        val donationReminderAdverts = emptyList<DonationReminderAdvert>()
 
         every { settings.showTopSitesFeature } returns true
         every { settings.showRecentTabsFeature } returns true
@@ -284,6 +304,8 @@ class SessionControlViewTest {
             showRecentSyncedTab = true,
             historyMetadata,
             pocketStories,
+            false,
+            donationReminderAdverts,
         )
 
         assertTrue(results[0] is AdapterItem.TopPlaceholderItem)

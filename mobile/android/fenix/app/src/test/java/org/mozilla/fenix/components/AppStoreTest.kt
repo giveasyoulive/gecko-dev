@@ -32,6 +32,8 @@ import org.mozilla.fenix.components.appstate.AppAction
 import org.mozilla.fenix.components.appstate.AppAction.MessagingAction.UpdateMessageToShow
 import org.mozilla.fenix.components.appstate.AppState
 import org.mozilla.fenix.components.appstate.filterOut
+import org.mozilla.fenix.components.feature.giveasyoulive.model.DonationReminderAdvert
+import org.mozilla.fenix.components.feature.giveasyoulive.model.donationReminderAdvertExamples
 import org.mozilla.fenix.ext.components
 import org.mozilla.fenix.ext.getFilteredStories
 import org.mozilla.fenix.home.bookmarks.Bookmark
@@ -274,6 +276,8 @@ class AppStoreTest {
             val topSites: List<TopSite> = listOf(mockk(), mockk())
             val recentTabs: List<RecentTab> = listOf(mockk(), mockk())
             val bookmarks: List<Bookmark> = listOf(mockk(), mockk())
+            val donationReminderAdverts: List<DonationReminderAdvert> = listOf(mockk(), mockk())
+
             val group1 = RecentHistoryGroup(title = "test One")
             val group2 = RecentHistoryGroup(title = "testSearchTerm")
             val group3 = RecentHistoryGroup(title = "test two")
@@ -299,6 +303,7 @@ class AppStoreTest {
                     bookmarks = bookmarks,
                     recentHistory = recentHistory,
                     recentSyncedTabState = recentSyncedTabState,
+                    donationReminderAdverts = donationReminderAdverts,
                 ),
             ).join()
 
