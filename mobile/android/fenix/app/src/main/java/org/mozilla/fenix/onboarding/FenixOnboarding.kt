@@ -62,12 +62,12 @@ class FenixOnboarding(context: Context) : PreferencesHolder {
         /**
          * Name of the shared preferences file.
          */
-        private const val PREF_NAME_ONBOARDING_KEY = "fenix.onboarding"
+        private const val PREF_NAME_ONBOARDING_KEY = "donationreminder.onboarding"
 
         /**
          * Key for [onboardedVersion].
          */
         @VisibleForTesting
-        internal const val LAST_VERSION_ONBOARDING_KEY = "fenix.onboarding.last_version"
+        internal const val LAST_VERSION_ONBOARDING_KEY = "donationreminder.onboarding.last_version"
     }
 }
