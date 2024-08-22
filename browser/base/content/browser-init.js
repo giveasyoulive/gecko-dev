@@ -609,6 +609,8 @@ var gBrowserInit = {
 
     ShoppingSidebarManager.ensureInitialized();
 
+    SelectableProfileService?.init();
+
     SessionStore.promiseAllWindowsRestored.then(() => {
       this._schedulePerWindowIdleTasks();
       document.documentElement.setAttribute("sessionrestored", "true");
@@ -1020,8 +1022,6 @@ var gBrowserInit = {
 
     TabletModeUpdater.uninit();
 
-    gTabletModePageCounter.finish();
-
     CaptivePortalWatcher.uninit();
 
     SidebarController.uninit();
@@ -1037,6 +1037,8 @@ var gBrowserInit = {
     NewTabPagePreloading.removePreloadedBrowser(window);
 
     FirefoxViewHandler.uninit();
+
+    SelectableProfileService?.uninit();
 
     // Now either cancel delayedStartup, or clean up the services initialized from
     // it.

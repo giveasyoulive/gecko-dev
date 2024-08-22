@@ -36,18 +36,6 @@
     "description": "Flag indicating the IAccessibleTable accessibility interface has been used.",
     "alert_emails": ["accessibility@mozilla.com"]
   },
-  "A11Y_UIA_DETECTION_TIMING_MS": {
-    "record_in_processes": ["main"],
-    "products": ["firefox", "fennec"],
-    "expires_in_version": "60",
-    "kind": "exponential",
-    "high": 60000,
-    "n_buckets": 20,
-    "keyed": false,
-    "description": "The amount of time the parent process blocked while detecting a UIA client.",
-    "bug_numbers": [1423989],
-    "alert_emails": ["dbolter@mozilla.com"]
-  },
   "A11Y_TREE_UPDATE_TIMING_MS": {
     "record_in_processes": ["main", "content"],
     "products": ["firefox", "fennec"],
@@ -8259,30 +8247,6 @@
     "releaseChannelCollection": "opt-out",
     "description": "Time (ms) from the Input event being created to the end of it being handled, but with overlapping events coalesced."
   },
-  "INPUT_EVENT_RESPONSE_STARTUP_MS": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["wpan@mozilla.com"],
-    "bug_numbers": [1373814],
-    "expires_in_version": "61",
-    "kind": "exponential",
-    "high": 10000,
-    "n_buckets": 50,
-    "releaseChannelCollection": "opt-out",
-    "description": "Time (ms) from the Input event being created to the end of it being handled, but with overlapping events coalesced, which happens before the process is ready for interaction."
-  },
-  "INPUT_EVENT_RESPONSE_POST_STARTUP_MS": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["wpan@mozilla.com"],
-    "bug_numbers": [1373814],
-    "expires_in_version": "61",
-    "kind": "exponential",
-    "high": 10000,
-    "n_buckets": 50,
-    "releaseChannelCollection": "opt-out",
-    "description": "Time (ms) from the Input event being created to the end of it being handled, but with overlapping events coalesced, which happens after the process is ready for interaction."
-  },
   "LOAD_INPUT_EVENT_RESPONSE_MS": {
     "record_in_processes": ["main", "content"],
     "products": ["firefox", "fennec"],
@@ -8368,16 +8332,6 @@
     "n_buckets": 20,
     "bug_numbers": [1810704],
     "description": "Session restore: Duration of session history collection in the parent process (ms)."
-  },
-  "FX_SESSION_RESTORE_PRIVACY_LEVEL": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["session-restore-telemetry-alerts@mozilla.com"],
-    "expires_in_version": "60",
-    "kind": "enumerated",
-    "n_values": 3,
-    "bug_numbers": [1360810],
-    "description": "Session restore: The privacy level chosen by the user (0: Collect data from all sites, 1: Collect data only from non-HTTPS sites, 2: Collect no data)"
   },
   "FX_SESSION_RESTORE_SERIALIZE_DATA_MS": {
     "record_in_processes": ["main", "content"],
@@ -8505,16 +8459,6 @@
     "kind": "enumerated",
     "n_values": 50,
     "description": "Session restore: Number of tabs restored eagerly in the session that has just been restored."
-  },
-  "FX_TABLETMODE_PAGE_LOAD": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "expires_in_version": "47",
-    "kind": "exponential",
-    "high": 100000,
-    "n_buckets": 30,
-    "keyed": true,
-    "description": "Number of toplevel location changes in tablet and desktop mode (only used on win10 where tablet mode is available)"
   },
   "FX_URLBAR_MERINO_LATENCY_MS": {
     "record_in_processes": ["main"],
@@ -9166,15 +9110,6 @@
     "expires_in_version": "never",
     "kind": "flag",
     "description": "Set if Telemetry failed to save the session data to disk."
-  },
-  "TELEMETRY_ASSEMBLE_PAYLOAD_EXCEPTION": {
-    "record_in_processes": ["main"],
-    "products": ["firefox", "fennec", "thunderbird"],
-    "alert_emails": ["telemetry-client-dev@mozilla.com"],
-    "bug_numbers": [1250640],
-    "expires_in_version": "53",
-    "kind": "count",
-    "description": "Count of exceptions in TelemetrySession.getSessionPayload()."
   },
   "TELEMETRY_EVENT_PING_SENT": {
     "record_in_processes": ["main"],
@@ -9884,16 +9819,6 @@
     "kind": "boolean",
     "description": "True when an IPC transaction is canceled"
   },
-  "IPC_SAME_PROCESS_MESSAGE_COPY_OOM_KB": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "expires_in_version": "50",
-    "kind": "exponential",
-    "low": 100,
-    "high": 10000000,
-    "n_buckets": 10,
-    "description": "Whenever the same-process MessageManager cannot be sent through sendAsyncMessage as it would cause an OOM, the size of the message content, in kb."
-  },
   "SEARCH_COUNTS": {
     "record_in_processes": ["main", "content"],
     "products": ["firefox", "fennec"],
@@ -10065,56 +9990,6 @@
     "n_buckets": 50,
     "description": "(Bug 1207089) Time in ms between displaying a popup notification and dismissing it without an action the first time, keyed by ID"
   },
-  "PRINT_BACKGROUND_TASK_TIME_MS": {
-    "record_in_processes": ["main"],
-    "products": ["firefox"],
-    "alert_emails": ["jwatt@jwatt.org"],
-    "expires_in_version": "95",
-    "description": "Milliseconds taken on the background thread only for print background tasks. Keys describe the task, usually the information being retrieved, current possible keys are: DefaultSettings, MarginsForPaper, Printers, NamedPrinter, NamedOrDefaultPrinter, SupportsDuplex, SupportsColor, SupportsCollation, PaperList.",
-    "keyed": true,
-    "kind": "exponential",
-    "high": 10000,
-    "n_buckets": 50,
-    "releaseChannelCollection": "opt-out",
-    "bug_numbers": [1660686]
-  },
-  "PRINT_BACKGROUND_TASK_ROUND_TRIP_TIME_MS": {
-    "record_in_processes": ["main"],
-    "products": ["firefox"],
-    "alert_emails": ["jwatt@jwatt.org"],
-    "expires_in_version": "95",
-    "description": "Milliseconds taken for print background tasks from spawning to background thread back to before resolving or rejecting on the main thread. See PRINT_BACKGROUND_TASK_TIME_MS for key description.",
-    "keyed": true,
-    "kind": "exponential",
-    "high": 10000,
-    "n_buckets": 50,
-    "releaseChannelCollection": "opt-out",
-    "bug_numbers": [1660686]
-  },
-  "PRINT_INIT_TO_PLATFORM_SENT_SETTINGS_MS": {
-    "record_in_processes": ["main"],
-    "products": ["firefox"],
-    "alert_emails": ["jwatt@jwatt.org", "emilio@mozilla.com"],
-    "expires_in_version": "112",
-    "description": "Milliseconds taken from when a print is initiated (typically by the user) to when the platform code is sent the print settings to create the initial print preview document.",
-    "kind": "exponential",
-    "high": 10000,
-    "n_buckets": 50,
-    "releaseChannelCollection": "opt-out",
-    "bug_numbers": [1663733, 1714261, 1745270, 1777398]
-  },
-  "PRINT_INIT_TO_PREVIEW_DOC_SHOWN_MS": {
-    "record_in_processes": ["main"],
-    "products": ["firefox"],
-    "alert_emails": ["jwatt@jwatt.org", "emilio@mozilla.com"],
-    "expires_in_version": "112",
-    "description": "Milliseconds taken from when a print is initiated (typically by the user) to when the initial print preview document is shown.",
-    "kind": "exponential",
-    "high": 10000,
-    "n_buckets": 50,
-    "releaseChannelCollection": "opt-out",
-    "bug_numbers": [1663733, 1714261, 1745270, 1777398]
-  },
   "DEVTOOLS_COLD_TOOLBOX_OPEN_DELAY_MS": {
     "record_in_processes": ["main"],
     "products": ["firefox", "fennec"],
@@ -10216,15 +10091,6 @@
     "n_values": 5,
     "bug_numbers": [1767334, 1768033],
     "description": "Whether H264 encoding is an available capability for being sent to the content processes. 0=no h264, 1=h264 avaiable, 2=no h264 1 directory added, 3=no h264 >1 directories added, 4=directory adds in prorgress"
-  },
-  "MEDIA_MKV_CANPLAY_REQUESTED": {
-    "record_in_processes": ["content"],
-    "products": ["firefox"],
-    "alert_emails": ["media-alerts@mozilla.com"],
-    "expires_in_version": "118",
-    "kind": "boolean",
-    "description": "Reports a true value when a page requests canPlayType for a matroska media type.",
-    "bug_numbers": [1429986, 1570634, 1606206, 1689266, 1754643, 1813150]
   },
   "MEDIA_MP4_PARSE_SAMPLE_DESCRIPTION_ENTRIES_HAVE_MULTIPLE_CODECS": {
     "record_in_processes": ["main", "content"],
@@ -10833,17 +10699,6 @@
     "bug_numbers": [1774222],
     "releaseChannelCollection": "opt-out",
     "description": "Counts of GMP codec initialization success and failure"
-  },
-  "MEDIA_RECORDER_RECORDING_DURATION": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["media-alerts@mozilla.com"],
-    "expires_in_version": "112",
-    "kind": "exponential",
-    "high": 3600,
-    "n_buckets": 100,
-    "bug_numbers": [1400757, 1429765, 1480589, 1532391, 1714303, 1754645],
-    "description": "The length of time (in seconds) that a recording lasted. Recorded when a recorder stops"
   },
   "DEVTOOLS_ENTRY_POINT": {
     "record_in_processes": ["main"],
@@ -11771,15 +11626,6 @@
     "n_values": 10,
     "description": "How often would blocked mixed content be allowed if HSTS upgrades were allowed? 0=display/no-HSTS, 1=display/HSTS, 2=active/no-HSTS, 3=active/HSTS"
   },
-  "MIXED_CONTENT_DOWNLOADS": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox"],
-    "alert_emails": ["seceng-telemetry@mozilla.com", "sstreich@mozilla.com"],
-    "bug_numbers": [1646768],
-    "expires_in_version": "90",
-    "kind": "boolean",
-    "description": "Accumulates how many downloads are mixed-content (True = The download is MixedContent, False= is not MixedContent)"
-  },
   "MIXED_CONTENT_IMAGES": {
     "record_in_processes": ["main", "content"],
     "products": ["firefox", "fennec"],
@@ -12504,15 +12350,6 @@
     "n_buckets": 10,
     "description": "The number of times a sync successfully completed in this session"
   },
-  "WEAVE_WIPE_SERVER_SUCCEEDED": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "expires_in_version": "55",
-    "alert_emails": ["sync-dev@mozilla.org"],
-    "kind": "boolean",
-    "bug_numbers": [1241699],
-    "description": "Stores 1 if a wipeServer call succeeded, and 0 if it failed."
-  },
   "WEBCRYPTO_EXTRACTABLE_IMPORT": {
     "record_in_processes": ["main", "content"],
     "products": ["firefox", "fennec"],
@@ -13189,18 +13026,6 @@
     "bug_numbers": [1662212, 1685399],
     "releaseChannelCollection": "opt-out"
   },
-  "VIDEO_SUSPEND_RECOVERY_TIME_MS": {
-    "record_in_processes": ["content"],
-    "products": ["firefox"],
-    "alert_emails": ["media-alerts@mozilla.com"],
-    "expires_in_version": "100",
-    "description": "Time taken for a video to resume after decoding was suspended, in milliseconds. Keyed by audio presence, hw acceleration, and by height ranges (boundaries: 240. 480, 720, 1080, 2160), e.g.: 'V,0-240', 'AV(hw),2160+'; and 'All' will accumulate all percentages.",
-    "keyed": true,
-    "kind": "exponential",
-    "high": 10000,
-    "n_buckets": 100,
-    "bug_numbers": [1294349, 1570634, 1606206, 1689267]
-  },
   "MEDIA_CODEC_USED": {
     "record_in_processes": ["main", "content"],
     "products": ["firefox", "fennec"],
@@ -13624,16 +13449,6 @@
     "releaseChannelCollection": "opt-out",
     "description": "Reports whether or not graphics drivers crashed during startup."
   },
-  "GRAPHICS_SANITY_TEST_REASON": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["gfx-telemetry-alerts@mozilla.com", "rhunt@mozilla.com"],
-    "expires_in_version": "70",
-    "kind": "enumerated",
-    "n_values": 20,
-    "releaseChannelCollection": "opt-out",
-    "description": "Reports why a graphics sanity test was run. 0=First Run, 1=App Updated, 2=Device Change, 3=Driver Change, 4=Advanced Layers Config Change."
-  },
   "TRANSLATION_OPPORTUNITIES": {
     "record_in_processes": ["main", "content"],
     "products": ["firefox", "fennec"],
@@ -13774,18 +13589,6 @@
     "kind": "count",
     "description": "Number of push messages that were successfully decrypted and delivered to a ServiceWorker."
   },
-  "D3D11_SYNC_HANDLE_FAILURE": {
-    "record_in_processes": ["main", "content", "gpu"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": [
-      "gfx-telemetry-alerts@mozilla.com",
-      "bschouten@mozilla.com"
-    ],
-    "expires_in_version": "66",
-    "releaseChannelCollection": "opt-out",
-    "kind": "count",
-    "description": "Number of times the D3D11 compositor failed to get a texture sync handle."
-  },
   "GFX_CONTENT_FAILED_TO_ACQUIRE_DEVICE": {
     "record_in_processes": ["main", "content"],
     "products": ["firefox", "fennec"],
@@ -13894,15 +13697,6 @@
     "kind": "enumerated",
     "n_values": 50,
     "description": "Compression ratio of WOFF2 data (%)"
-  },
-  "ALERTS_SERVICE_DND_ENABLED": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["firefox-dev@mozilla.org"],
-    "bug_numbers": [1219030],
-    "expires_in_version": "50",
-    "kind": "boolean",
-    "description": "XUL-only: whether the user has toggled do not disturb."
   },
   "PLUGIN_DRAWING_MODEL": {
     "record_in_processes": ["main", "content"],
@@ -14020,16 +13814,6 @@
     "bug_numbers": [1709139],
     "description": "Time spent during page load syntax parsing JS scripts on the main thread in ms."
   },
-  "DOM_SCRIPT_KIND": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["jcoppeard@mozilla.com"],
-    "expires_in_version": "63",
-    "kind": "categorical",
-    "bug_numbers": [1430145],
-    "labels": ["ClassicScript", "ModuleScript"],
-    "description": "Record the kind of every script loaded in a document."
-  },
   "DOM_SCRIPT_LOADING_SOURCE": {
     "record_in_processes": ["content"],
     "products": ["firefox", "fennec"],
@@ -14039,22 +13823,6 @@
     "bug_numbers": [1362114],
     "labels": ["Inline", "SourceFallback", "Source", "AltData"],
     "description": "Record the input from which the bytes are coming from, for each script in a document."
-  },
-  "DOM_SCRIPT_PRELOAD_RESULT": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["jcoppeard@mozilla.com"],
-    "expires_in_version": "63",
-    "kind": "categorical",
-    "bug_numbers": [1430145],
-    "labels": [
-      "Used",
-      "RejectedByPolicy",
-      "RequestMismatch",
-      "LoadError",
-      "NotUsed"
-    ],
-    "description": "Whether a preloaded script was used or the reason it was not used."
   },
   "VIDEO_DROPPED_FRAMES_PROPORTION": {
     "record_in_processes": ["content"],
@@ -14125,63 +13893,6 @@
     "n_values": 10,
     "description": "Media decoder backend (0=WMF Software, 1=DXVA2D3D9, 2=DXVA2D3D11)"
   },
-  "IPC_MESSAGE_SIZE2": {
-    "record_in_processes": ["main", "content", "gpu"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["hchang@mozilla.com"],
-    "bug_numbers": [1353159],
-    "expires_in_version": "60",
-    "kind": "exponential",
-    "high": 8000000,
-    "n_buckets": 50,
-    "keyed": false,
-    "description": "Measures the size of all IPC messages sent that are >= 4096 bytes."
-  },
-  "IPC_REPLY_SIZE": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["wmccloskey@mozilla.com"],
-    "bug_numbers": [1264820],
-    "expires_in_version": "55",
-    "kind": "exponential",
-    "high": 8000000,
-    "n_buckets": 50,
-    "keyed": true,
-    "description": "Measures the size of IPC messages by message name"
-  },
-  "IPC_SYNC_MAIN_LATENCY_MS": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["jya@mozilla.com", "drno@ohlmeier.org"],
-    "bug_numbers": [1333489],
-    "expires_in_version": "63",
-    "kind": "exponential",
-    "low": 32,
-    "high": 750,
-    "n_buckets": 40,
-    "keyed": true,
-    "description": "Measures the number of milliseconds we spend waiting for sync IPC messages to finish sending, keyed by message name. Note: only messages that wait for more than 500 microseconds and block the main thread are included in this probe."
-  },
-  "SANDBOX_HAS_SECCOMP_BPF": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["gcp@mozilla.com"],
-    "bug_numbers": [1098428],
-    "expires_in_version": "55",
-    "kind": "boolean",
-    "operating_systems": ["linux"],
-    "description": "Whether the system has seccomp-bpf capability"
-  },
-  "SANDBOX_HAS_SECCOMP_TSYNC": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["gcp@mozilla.com"],
-    "bug_numbers": [1098428, 1370578],
-    "expires_in_version": "61",
-    "kind": "boolean",
-    "operating_systems": ["linux"],
-    "description": "Whether the system has seccomp-bpf thread-sync capability"
-  },
   "SANDBOX_HAS_USER_NAMESPACES": {
     "record_in_processes": ["main"],
     "products": ["firefox"],
@@ -14196,36 +13907,6 @@
     "kind": "boolean",
     "operating_systems": ["linux"],
     "description": "Whether our process succedeed in creating a user namespace"
-  },
-  "SANDBOX_HAS_USER_NAMESPACES_PRIVILEGED": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["gcp@mozilla.com"],
-    "bug_numbers": [1098428, 1370578],
-    "expires_in_version": "61",
-    "kind": "boolean",
-    "operating_systems": ["linux"],
-    "description": "Whether the system has the capability to create privileged user namespaces"
-  },
-  "SANDBOX_MEDIA_ENABLED": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["gcp@mozilla.com"],
-    "bug_numbers": [1098428],
-    "expires_in_version": "55",
-    "kind": "boolean",
-    "operating_systems": ["linux"],
-    "description": "Whether the sandbox is enabled for media/GMP plugins"
-  },
-  "SANDBOX_CONTENT_ENABLED": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["gcp@mozilla.com"],
-    "bug_numbers": [1098428],
-    "expires_in_version": "55",
-    "kind": "boolean",
-    "operating_systems": ["linux"],
-    "description": "Whether the sandbox is enabled for the content process"
   },
   "SANDBOX_REJECTED_SYSCALLS": {
     "record_in_processes": ["main", "content"],
@@ -14333,50 +14014,6 @@
     "bug_numbers": [1272501],
     "releaseChannelCollection": "opt-out",
     "description": "HTMLInputElement.webkitdirectory attribute used"
-  },
-  "TIME_TO_FIRST_CLICK_MS": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["perf-telemetry-alerts@mozilla.com"],
-    "bug_numbers": [1307675, 1332511],
-    "expires_in_version": "58",
-    "kind": "exponential",
-    "high": 50000,
-    "n_buckets": 100,
-    "description": "Time in milliseconds from the first non-blank paint to the creation time of the next click event per top-level content browsing context."
-  },
-  "TIME_TO_FIRST_KEY_INPUT_MS": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["perf-telemetry-alerts@mozilla.com"],
-    "bug_numbers": [1307675, 1332511],
-    "expires_in_version": "58",
-    "kind": "exponential",
-    "high": 50000,
-    "n_buckets": 100,
-    "description": "Time in milliseconds from the first non-blank paint to the creation time of the next key event per top-level content browsing context."
-  },
-  "TIME_TO_FIRST_MOUSE_MOVE_MS": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["perf-telemetry-alerts@mozilla.com"],
-    "bug_numbers": [1307675, 1332511],
-    "expires_in_version": "58",
-    "kind": "exponential",
-    "high": 50000,
-    "n_buckets": 100,
-    "description": "Time in milliseconds from the first non-blank paint to the creation time of the next mouse move event per top-level content browsing context."
-  },
-  "TIME_TO_FIRST_SCROLL_MS": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["perf-telemetry-alerts@mozilla.com"],
-    "bug_numbers": [1307675, 1332511],
-    "expires_in_version": "58",
-    "kind": "exponential",
-    "high": 50000,
-    "n_buckets": 100,
-    "description": "Time in milliseconds from the first non-blank paint to the creation time of the next scroll event per top-level content browsing context."
   },
   "TIME_TO_FIRST_INTERACTION_MS": {
     "record_in_processes": ["main", "content"],
@@ -14579,57 +14216,6 @@
     "n_buckets": 12,
     "description": "Percentages of times for phases in an expensive content paint relative to the time spent in the entire expensive paint. (\"dl\" = Display list, \"wrdl\" = WebRender display list, \"sb\" = Scene building, \"fb\" = Frame building)"
   },
-  "GPU_WAIT_TIME_MS": {
-    "record_in_processes": ["main", "gpu"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": [
-      "gfx-telemetry-alerts@mozilla.com",
-      "jmuizelaar@mozilla.com"
-    ],
-    "bug_numbers": [1524090, 1656130],
-    "expires_in_version": "86",
-    "releaseChannelCollection": "opt-out",
-    "kind": "exponential",
-    "high": 5000,
-    "n_buckets": 50,
-    "description": "The number of milliseconds we spend waiting for the GPU"
-  },
-  "NARRATE_CONTENT_BY_LANGUAGE_2": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["eisaacson@mozilla.com"],
-    "bug_numbers": [1308030, 1324868, 1532821],
-    "releaseChannelCollection": "opt-out",
-    "expires_in_version": "72",
-    "kind": "enumerated",
-    "keyed": true,
-    "n_values": 4,
-    "description": "Number of Narrate initialization attempts and successes broken up by content's language (ISO 639-1 code) (0 = initialization attempt, 1 = successfully initialized)"
-  },
-  "NARRATE_CONTENT_SPEAKTIME_MS": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["eisaacson@mozilla.com"],
-    "bug_numbers": [1308030, 1532821],
-    "releaseChannelCollection": "opt-out",
-    "expires_in_version": "72",
-    "kind": "linear",
-    "high": 300000,
-    "n_buckets": 30,
-    "description": "Time in MS that content is narrated in 10 second increments up to 5 minutes"
-  },
-  "TABCHILD_PAINT_TIME": {
-    "record_in_processes": ["content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["gfx-telemetry-alerts@mozilla.com", "mconley@mozilla.com"],
-    "bug_numbers": [1313686],
-    "expires_in_version": "65",
-    "kind": "exponential",
-    "high": 1000,
-    "n_buckets": 50,
-    "description": "Time spent painting the contents of a remote browser (ms).",
-    "releaseChannelCollection": "opt-out"
-  },
   "TIME_TO_NON_BLANK_PAINT_MS": {
     "record_in_processes": ["main", "content"],
     "products": ["firefox"],
@@ -14641,28 +14227,6 @@
     "n_buckets": 100,
     "bug_numbers": [1307242, 1489524, 1580077],
     "description": "The time between navigation start and the first non-blank paint of a foreground root content document, in milliseconds. This only records documents that were in an active docshell throughout the whole time between navigation start and non-blank paint. The non-blank paint timestamp is taken during display list building and does not include rasterization or compositing of that paint."
-  },
-  "TIME_TO_NON_BLANK_PAINT_NETOPT_MS": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["necko@mozilla.com", "hbambas@mozilla.com"],
-    "expires_in_version": "63",
-    "kind": "exponential",
-    "high": 100000,
-    "n_buckets": 100,
-    "bug_numbers": [1411632],
-    "description": "The time between navigation start and the first non-blank paint of a foreground root content document, in milliseconds. This only records documents that were in an active docshell throughout the whole time between navigation start and non-blank paint. The non-blank paint timestamp is taken during display list building and does not include rasterization or compositing of that paint.  This probe only accumulates when there were active-tab network load optimizations happening during the interval."
-  },
-  "TIME_TO_NON_BLANK_PAINT_NO_NETOPT_MS": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["necko@mozilla.com", "hbambas@mozilla.com"],
-    "expires_in_version": "63",
-    "kind": "exponential",
-    "high": 100000,
-    "n_buckets": 100,
-    "bug_numbers": [1411632],
-    "description": "The time between navigation start and the first non-blank paint of a foreground root content document, in milliseconds. This only records documents that were in an active docshell throughout the whole time between navigation start and non-blank paint. The non-blank paint timestamp is taken during display list building and does not include rasterization or compositing of that paint.  This probe only accumulates when there were no active-tab network load optimizations happening during the interval."
   },
   "TIME_TO_FIRST_CONTENTFUL_PAINT_MS": {
     "record_in_processes": ["main", "content"],
@@ -14699,52 +14263,6 @@
     "n_buckets": 100,
     "bug_numbers": [1341531],
     "description": "Time (ms) for the keyboard event to dispatch, but before handlers executing."
-  },
-  "INPUT_EVENT_QUEUED_APZ_TOUCH_MOVE_MS": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["wpan@mozilla.com"],
-    "expires_in_version": "60",
-    "kind": "exponential",
-    "high": 5000,
-    "n_buckets": 100,
-    "bug_numbers": [1341531],
-    "description": "Time (ms) for the APZ handled touch move event to dispatch, but before handlers executing."
-  },
-  "INPUT_EVENT_QUEUED_APZ_MOUSE_MOVE_MS": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["wpan@mozilla.com"],
-    "expires_in_version": "60",
-    "kind": "exponential",
-    "high": 5000,
-    "n_buckets": 100,
-    "bug_numbers": [1341531],
-    "description": "Time (ms) for the APZ handled mouse move event to dispatch, but before handlers executing."
-  },
-  "INPUT_EVENT_QUEUED_APZ_WHEEL_MS": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["wpan@mozilla.com"],
-    "expires_in_version": "60",
-    "kind": "exponential",
-    "high": 5000,
-    "n_buckets": 100,
-    "bug_numbers": [1341531],
-    "description": "Time (ms) for the APZ handled wheel event to dispatch, but before handlers executing."
-  },
-  "IPC_SYNC_MESSAGE_MANAGER_LATENCY_MS": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["nika@thelayzells.com"],
-    "bug_numbers": [1348113],
-    "expires_in_version": "70",
-    "kind": "exponential",
-    "low": 32,
-    "high": 750,
-    "n_buckets": 40,
-    "keyed": true,
-    "description": "Measures the number of milliseconds we spend waiting for sync message manager IPC messages to finish sending, keyed by message name. Note: only messages that wait for more than 500 microseconds are included in this probe."
   },
   "TIME_TO_DOM_LOADING_MS": {
     "record_in_processes": ["content"],
@@ -14790,28 +14308,6 @@
     "bug_numbers": [1344893, 1580077],
     "description": "Time in milliseconds from navigationStart to domContentLoadedEventStart."
   },
-  "TIME_TO_DOM_CONTENT_LOADED_START_ACTIVE_NETOPT_MS": {
-    "record_in_processes": ["content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["necko@mozilla.com", "hbambas@mozilla.com"],
-    "expires_in_version": "63",
-    "kind": "exponential",
-    "high": 50000,
-    "n_buckets": 100,
-    "bug_numbers": [1411632],
-    "description": "Time in milliseconds from navigationStart to domContentLoadedEventStart for all-the-time active page for which some of the network loading optimization happened."
-  },
-  "TIME_TO_DOM_CONTENT_LOADED_START_ACTIVE_MS": {
-    "record_in_processes": ["content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["necko@mozilla.com", "hbambas@mozilla.com"],
-    "expires_in_version": "63",
-    "kind": "exponential",
-    "high": 50000,
-    "n_buckets": 100,
-    "bug_numbers": [1411632],
-    "description": "Time in milliseconds from navigationStart to domContentLoadedEventStart for all-the-time active page for which none of the network loading optimization happened."
-  },
   "TIME_TO_DOM_CONTENT_LOADED_END_MS": {
     "record_in_processes": ["content"],
     "products": ["firefox"],
@@ -14851,28 +14347,6 @@
     "n_buckets": 100,
     "bug_numbers": [1344893, 1580077],
     "description": "Time in milliseconds from navigationStart to loadEventStart."
-  },
-  "TIME_TO_LOAD_EVENT_START_ACTIVE_NETOPT_MS": {
-    "record_in_processes": ["content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["necko@mozilla.com", "hbambas@mozilla.com"],
-    "expires_in_version": "63",
-    "kind": "exponential",
-    "high": 50000,
-    "n_buckets": 100,
-    "bug_numbers": [1411632],
-    "description": "Time in milliseconds from navigationStart to loadEventStart for all-the-time active page for which some of the network loading optimization happened."
-  },
-  "TIME_TO_LOAD_EVENT_START_ACTIVE_MS": {
-    "record_in_processes": ["content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["necko@mozilla.com", "hbambas@mozilla.com"],
-    "expires_in_version": "63",
-    "kind": "exponential",
-    "high": 50000,
-    "n_buckets": 100,
-    "bug_numbers": [1411632],
-    "description": "Time in milliseconds from navigationStart to loadEventStart for all-the-time active page for which none of the network loading optimization happened."
   },
   "TIME_TO_LOAD_EVENT_END_MS": {
     "record_in_processes": ["content"],
@@ -15011,85 +14485,6 @@
     "n_buckets": 100,
     "bug_numbers": [1671729],
     "description": "Time spent in milliseconds calling all request animation frame callbacks for a document before it has reached readystate complete."
-  },
-  "INPUT_EVENT_HANDLED_MOUSE_UP_MS": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["wpan@mozilla.com"],
-    "expires_in_version": "60",
-    "kind": "exponential",
-    "high": 5000,
-    "n_buckets": 100,
-    "bug_numbers": [1345540],
-    "description": "Time (ms) for the mouse up event spent in handlers."
-  },
-  "INPUT_EVENT_HANDLED_MOUSE_DOWN_MS": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["wpan@mozilla.com"],
-    "expires_in_version": "60",
-    "kind": "exponential",
-    "high": 5000,
-    "n_buckets": 100,
-    "bug_numbers": [1345540],
-    "description": "Time (ms) for the mouse down event spent in handlers."
-  },
-  "INPUT_EVENT_HANDLED_KEYBOARD_MS": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["wpan@mozilla.com"],
-    "expires_in_version": "60",
-    "kind": "exponential",
-    "high": 5000,
-    "n_buckets": 100,
-    "bug_numbers": [1345540],
-    "description": "Time (ms) for the keyboard event spent in handlers."
-  },
-  "INPUT_EVENT_HANDLED_APZ_TOUCH_MOVE_MS": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["wpan@mozilla.com"],
-    "expires_in_version": "60",
-    "kind": "exponential",
-    "high": 5000,
-    "n_buckets": 100,
-    "bug_numbers": [1345540],
-    "description": "Time (ms) for the APZ handled touch move event spent in handlers."
-  },
-  "INPUT_EVENT_HANDLED_APZ_MOUSE_MOVE_MS": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["wpan@mozilla.com"],
-    "expires_in_version": "60",
-    "kind": "exponential",
-    "high": 5000,
-    "n_buckets": 100,
-    "bug_numbers": [1345540],
-    "description": "Time (ms) for the APZ handled mouse move event spent in handlers."
-  },
-  "INPUT_EVENT_HANDLED_APZ_WHEEL_MS": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["wpan@mozilla.com"],
-    "expires_in_version": "60",
-    "kind": "exponential",
-    "high": 5000,
-    "n_buckets": 100,
-    "bug_numbers": [1345540],
-    "description": "Time (ms) for the APZ handled wheel event spent in handlers."
-  },
-  "IPC_SYNC_RECEIVE_MS": {
-    "record_in_processes": ["main", "content", "gpu"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["nika@thelayzells.com"],
-    "bug_numbers": [1365719],
-    "expires_in_version": "70",
-    "kind": "exponential",
-    "low": 32,
-    "high": 750,
-    "n_buckets": 40,
-    "keyed": true,
-    "description": "Measures the number of milliseconds we spend processing sync IPC messages in the receiving process, keyed by message name. Note: only messages that take over 500 microseconds are included in this probe."
   },
   "WEBEXT_BACKGROUND_PAGE_LOAD_MS": {
     "record_in_processes": ["main"],
@@ -15829,29 +15224,6 @@
     "n_buckets": 50,
     "description": "Time elapsed (in milliseconds) between the construction of a frame and the start of rendering."
   },
-  "WEB_AUDIO_BECOMES_AUDIBLE_TIME": {
-    "record_in_processes": ["content"],
-    "products": ["firefox"],
-    "alert_emails": ["media-alerts@mozilla.com"],
-    "expires_in_version": "100",
-    "kind": "linear",
-    "high": 60,
-    "n_buckets": 10,
-    "bug_numbers": [1490074, 1570634, 1606206, 1652196, 1700828, 1714303],
-    "description": "How long the AudioContext would become audible since it was created, time unit is seconds.",
-    "releaseChannelCollection": "opt-out"
-  },
-  "WEB_AUDIO_AUTOPLAY": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["media-alerts@mozilla.com"],
-    "expires_in_version": "96",
-    "kind": "categorical",
-    "labels": ["NeverBlocked", "AllowedAfterBlocked", "NeverAllowed"],
-    "bug_numbers": [1512277, 1652196, 1700828],
-    "description": "The number of times an AudioContext is allowed to start after being blocked, or the number of AudioContexts attempting to start which were never blocked or never allowed.",
-    "releaseChannelCollection": "opt-out"
-  },
   "TABS_AUDIO_COMPETITION": {
     "record_in_processes": ["main"],
     "products": ["firefox"],
@@ -15982,38 +15354,6 @@
     "keys": ["Connection", "Transaction"],
     "releaseChannelCollection": "opt-out",
     "description": "Numbers of HTTP transactions and connections by type. There are some categories separated by labels based on 5 parameters: 1. normal browsing or private browsing 2. system principal or not 3. first party or third party 4. class of service (Leader/Background/Others) 5. tracking classification (Basic/Content/FingerprintingContent)."
-  },
-  "THREAD_WAKEUP": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["opettay@mozilla.com"],
-    "bug_numbers": [1554292, 1566485, 1606208],
-    "expires_in_version": "85",
-    "kind": "exponential",
-    "high": 60000,
-    "n_buckets": 100,
-    "keyed": true,
-    "description": "How many milliseconds it took before 100 wakeups for the thread was done because of new Runnables."
-  },
-  "PRESSHELL_LAYOUT_TOTAL_MS_PER_TICK": {
-    "record_in_processes": ["main", "content"],
-    "products": ["firefox", "fennec"],
-    "alert_emails": ["layout-telemetry-alerts@mozilla.com"],
-    "bug_numbers": [1578319, 1616147],
-    "expires_in_version": "82",
-    "keyed": true,
-    "keys": [
-      "Restyle",
-      "ReflowOther",
-      "ReflowFlex",
-      "ReflowGrid",
-      "ReflowTable",
-      "ReflowText"
-    ],
-    "kind": "exponential",
-    "high": 1000,
-    "n_buckets": 50,
-    "description": "Time in milliseconds spent in the layout system per Refresh Driver tick."
   },
   "COOKIE_PURGING_ORIGINS_PURGED": {
     "expires_in_version": "never",
