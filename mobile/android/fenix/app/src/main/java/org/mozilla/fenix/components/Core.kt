@@ -181,6 +181,7 @@ class Core(
             cookieBannerHandlingGlobalRules = context.settings().shouldEnableCookieBannerGlobalRules,
             cookieBannerHandlingGlobalRulesSubFrames = context.settings().shouldEnableCookieBannerGlobalRulesSubFrame,
             emailTrackerBlockingPrivateBrowsing = true,
+            userAgentString = "Mozilla/5.0 (Android "+android.os.Build.VERSION.RELEASE + "; GAYL; Mobile; rv:131.0) Gecko/131.0 Firefox/131.0"
         )
 
         GeckoEngine(
@@ -190,7 +191,6 @@ class Core(
         ).also {
             WebCompatFeature.install(it)
             DonationReminderFeature.install(it, context)
-
 
             /**
              * There are some issues around localization to be resolved, as well as questions around
