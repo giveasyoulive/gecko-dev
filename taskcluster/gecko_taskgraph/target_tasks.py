@@ -259,9 +259,10 @@ def accept_raptor_android_build(platform):
         return True
     if "s21" in platform and "aarch64" in platform:
         return True
-    # Bug 1910111 temporarily disable a55
-    # if "a55" in platform and "aarch64" in platform:
-    #     return True
+    if "s24" in platform and "aarch64" in platform:
+        return True
+    if "a55" in platform and "aarch64" in platform:
+        return True
     if "a51" in platform:
         return True
     return False
@@ -1127,7 +1128,7 @@ def target_tasks_searchfox(full_task_graph, parameters, graph_config):
         "searchfox-macosx64-searchfox/debug",
         "searchfox-macosx64-aarch64-searchfox/debug",
         "searchfox-win64-searchfox/debug",
-        "searchfox-android-armv7-searchfox/debug",
+        "searchfox-android-aarch64-searchfox/debug",
         "searchfox-ios-searchfox/debug",
         "source-test-file-metadata-bugzilla-components",
         "source-test-file-metadata-test-info-all",

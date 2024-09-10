@@ -1361,7 +1361,7 @@ class FunctionCompiler {
   // the offset rather than vice versa is that a small offset can be ignored
   // by both explicit bounds checking and bounds check elimination.
   void foldConstantPointer(MemoryAccessDesc* access, MDefinition** base) {
-    uint32_t offsetGuardLimit = GetMaxOffsetGuardLimit(
+    uint64_t offsetGuardLimit = GetMaxOffsetGuardLimit(
         codeMeta_.hugeMemoryEnabled(access->memoryIndex()));
 
     if ((*base)->isConstant()) {
@@ -1373,9 +1373,8 @@ class FunctionCompiler {
       }
 
       uint64_t offset = access->offset64();
-
       if (offset < offsetGuardLimit && basePtr < offsetGuardLimit - offset) {
-        offset += uint32_t(basePtr);
+        offset += basePtr;
         access->setOffset32(uint32_t(offset));
         *base = isMem64(access->memoryIndex()) ? constantI64(int64_t(0))
                                                : constantI32(0);
@@ -1387,7 +1386,7 @@ class FunctionCompiler {
   // be checked, compute the effective address, trapping on overflow.
   void maybeComputeEffectiveAddress(MemoryAccessDesc* access,
                                     MDefinition** base, bool mustAddOffset) {
-    uint32_t offsetGuardLimit = GetMaxOffsetGuardLimit(
+    uint64_t offsetGuardLimit = GetMaxOffsetGuardLimit(
         codeMeta_.hugeMemoryEnabled(access->memoryIndex()));
 
     if (access->offset64() >= offsetGuardLimit ||
@@ -1476,8 +1475,8 @@ class FunctionCompiler {
     MOZ_ASSERT(!inDeadCode());
     MOZ_ASSERT(!codeMeta_.isAsmJS());
 
-    // Attempt to fold an offset into a constant base pointer so as to simplify
-    // the addressing expression.  This may update *base.
+    // Attempt to fold a constant base pointer into the offset so as to simplify
+    // the addressing expression. This may update *base.
     foldConstantPointer(access, base);
 
     // Determine whether an alignment check is needed and whether the offset
@@ -1541,7 +1540,8 @@ class FunctionCompiler {
     return codeMeta_.hugeMemoryEnabled(memoryIndex);
   }
 
-  // Add the offset into the pointer to yield the EA; trap on overflow.
+  // Add the offset into the pointer to yield the EA; trap on overflow. Clears
+  // the offset on the memory access as a result.
   MDefinition* computeEffectiveAddress(MDefinition* base,
                                        MemoryAccessDesc* access) {
     if (inDeadCode()) {
@@ -2408,6 +2408,11 @@ class FunctionCompiler {
       return false;
     }
 
+    // We can't inline an imported function.
+    if (codeMeta().funcIsImport(funcIndex)) {
+      return false;
+    }
+
     // Limit the inlining depth.
     if (inliningDepth() > JS::Prefs::wasm_experimental_inline_depth_limit()) {
       return false;
@@ -2617,6 +2622,8 @@ class FunctionCompiler {
       MOZ_ASSERT(callIndirectId.kind() == CallIndirectIdKind::AsmJS);
       uint32_t tableIndex = codeMeta_.asmJSSigToTableIndex[funcTypeIndex];
       const TableDesc& table = codeMeta_.tables[tableIndex];
+      // ensured by asm.js validation
+      MOZ_ASSERT(table.initialLength() <= UINT32_MAX);
       MOZ_ASSERT(IsPowerOfTwo(table.initialLength()));
 
       MDefinition* mask = constantI32(int32_t(table.initialLength() - 1));
@@ -5179,11 +5186,6 @@ class FunctionCompiler {
   CallRefHint readCallRefHint() {
     // We don't track anything if we're not using lazy tiering
     if (compilerEnv_.mode() != CompileMode::LazyTiering) {
-      return CallRefHint::unknown();
-    }
-
-    // We don't track anything when inside dead code
-    if (inDeadCode()) {
       return CallRefHint::unknown();
     }
 
@@ -7928,7 +7930,6 @@ static bool EmitSpeculativeInlineCallRef(
 
 static bool EmitCallRef(FunctionCompiler& f) {
   uint32_t bytecodeOffset = f.readBytecodeOffset();
-  CallRefHint hint = f.readCallRefHint();
   const FuncType* funcType;
   MDefinition* callee;
   DefVector args;
@@ -7936,6 +7937,10 @@ static bool EmitCallRef(FunctionCompiler& f) {
   if (!f.iter().readCallRef(&funcType, &callee, &args)) {
     return false;
   }
+
+  // We must unconditionally read a call_ref hint so that we stay in sync with
+  // how baseline generates them.
+  CallRefHint hint = f.readCallRefHint();
 
   if (f.inDeadCode()) {
     return true;

@@ -138,6 +138,7 @@ using mozilla::dom::Promise;
 namespace mozilla::net {
 
 LazyLogModule gHttpLog("nsHttp");
+LazyLogModule gHttpIOLog("HttpIO");
 
 #ifdef ANDROID
 static nsCString GetDeviceModelId() {
@@ -229,18 +230,22 @@ static nsCString DocumentAcceptHeader() {
   // https://fetch.spec.whatwg.org/#document-accept-header-value
   // The value specified by the fetch standard is
   // `text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8`
-  // but we also insert all of the image formats before */*
   nsCString mimeTypes("text/html,application/xhtml+xml,application/xml;q=0.9,");
 
-  if (mozilla::StaticPrefs::image_avif_enabled()) {
-    mimeTypes.Append("image/avif,");
+  // we also insert all of the image formats before */* when the pref is set
+  if (mozilla::StaticPrefs::network_http_accept_include_images()) {
+    if (mozilla::StaticPrefs::image_avif_enabled()) {
+      mimeTypes.Append("image/avif,");
+    }
+
+    if (mozilla::StaticPrefs::image_jxl_enabled()) {
+      mimeTypes.Append("image/jxl,");
+    }
+
+    mimeTypes.Append("image/webp,image/png,image/svg+xml,");
   }
 
-  if (mozilla::StaticPrefs::image_jxl_enabled()) {
-    mimeTypes.Append("image/jxl,");
-  }
-
-  mimeTypes.Append("image/webp,image/png,image/svg+xml,*/*;q=0.8");
+  mimeTypes.Append("*/*;q=0.8");
 
   return mimeTypes;
 }
@@ -495,7 +500,6 @@ nsresult nsHttpHandler::Init() {
     obsService->AddObserver(this, "psm:user-certificate-deleted", true);
     obsService->AddObserver(this, "intl:app-locales-changed", true);
     obsService->AddObserver(this, "browser-delayed-startup-finished", true);
-    obsService->AddObserver(this, "network:captive-portal-connectivity", true);
     obsService->AddObserver(this, "network:reset-http3-excluded-list", true);
     obsService->AddObserver(this, "network:socket-process-crashed", true);
 
@@ -1047,35 +1051,10 @@ void nsHttpHandler::InitUserAgentComponents() {
 
 #elif defined(XP_MACOSX)
   mOscpu.AssignLiteral("Intel Mac OS X 10.15");
-#elif defined(XP_UNIX)
-  if (mozilla::StaticPrefs::network_http_useragent_freezeCpu()) {
-#  ifdef ANDROID
-    mOscpu.AssignLiteral("Linux armv81");
-#  else
-    mOscpu.AssignLiteral("Linux x86_64");
-#  endif
-  } else {
-    struct utsname name {};
-    int ret = uname(&name);
-    if (ret >= 0) {
-      nsAutoCString buf;
-      buf = (char*)name.sysname;
-      buf += ' ';
-
-#  ifdef AIX
-      // AIX uname returns machine specific info in the uname.machine
-      // field and does not return the cpu type like other platforms.
-      // We use the AIX version and release numbers instead.
-      buf += (char*)name.version;
-      buf += '.';
-      buf += (char*)name.release;
-#  else
-      buf += (char*)name.machine;
-#  endif
-
-      mOscpu.Assign(buf);
-    }
-  }
+#elif defined(ANDROID)
+  mOscpu.AssignLiteral("Linux armv81");
+#else
+  mOscpu.AssignLiteral("Linux x86_64");
 #endif
 
   mUserAgentIsDirty = true;
@@ -2299,9 +2278,6 @@ nsHttpHandler::Observe(nsISupports* subject, const char* topic,
   } else if (!strcmp(topic, "intl:app-locales-changed")) {
     // If the locale changed, there's a chance the accept language did too
     mAcceptLanguagesIsDirty = true;
-  } else if (!strcmp(topic, "network:captive-portal-connectivity")) {
-    nsAutoCString data8 = NS_ConvertUTF16toUTF8(data);
-    mThroughCaptivePortal = data8.EqualsLiteral("captive");
   } else if (!strcmp(topic, "network:reset-http3-excluded-list")) {
     MutexAutoLock lock(mHttpExclusionLock);
     mExcludedHttp3Origins.Clear();

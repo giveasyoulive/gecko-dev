@@ -12,6 +12,8 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -37,7 +39,9 @@ import mozilla.components.concept.engine.translate.findLanguage
 import mozilla.components.lib.state.ext.observeAsState
 import mozilla.components.support.ktx.android.util.dpToPx
 import mozilla.components.support.ktx.android.view.setNavigationBarColorCompat
+import mozilla.telemetry.glean.private.NoExtras
 import org.mozilla.fenix.BrowserDirection
+import org.mozilla.fenix.GleanMetrics.Events
 import org.mozilla.fenix.HomeActivity
 import org.mozilla.fenix.R
 import org.mozilla.fenix.components.components
@@ -65,6 +69,11 @@ import org.mozilla.fenix.nimbus.FxNimbus
 import org.mozilla.fenix.settings.SupportUtils
 import org.mozilla.fenix.settings.deletebrowsingdata.deleteAndQuit
 import org.mozilla.fenix.theme.FirefoxTheme
+import org.mozilla.fenix.utils.contentGrowth
+import org.mozilla.fenix.utils.enterMenu
+import org.mozilla.fenix.utils.enterSubmenu
+import org.mozilla.fenix.utils.exitMenu
+import org.mozilla.fenix.utils.exitSubmenu
 
 // EXPANDED_MIN_RATIO is used for BottomSheetBehavior.halfExpandedRatio().
 // That value needs to be less than the PEEK_HEIGHT.
@@ -83,8 +92,10 @@ class MenuDialogFragment : BottomSheetDialogFragment() {
     private val args by navArgs<MenuDialogFragmentArgs>()
     private val browsingModeManager get() = (activity as HomeActivity).browsingModeManager
 
-    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog =
-        super.onCreateDialog(savedInstanceState).apply {
+    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+        Events.toolbarMenuVisible.record(NoExtras())
+
+        return super.onCreateDialog(savedInstanceState).apply {
             setOnShowListener {
                 val navigationBarColor = if (browsingModeManager.mode.isPrivate) {
                     ContextCompat.getColor(context, R.color.fx_mobile_private_layer_color_3)
@@ -106,6 +117,7 @@ class MenuDialogFragment : BottomSheetDialogFragment() {
                 }
             }
         }
+    }
 
     @Suppress("LongMethod", "CyclomaticComplexMethod")
     override fun onCreateView(
@@ -148,6 +160,10 @@ class MenuDialogFragment : BottomSheetDialogFragment() {
                         ?.requestedTranslationPair?.toLanguage
                     val isExtensionsProcessDisabled = browserStore.state.extensionsProcessDisabled
 
+                    val customTab = args.customTabSessionId?.let {
+                        browserStore.state.findCustomTab(it)
+                    }
+
                     val navHostController = rememberNavController()
                     val coroutineScope = rememberCoroutineScope()
                     val store = remember {
@@ -158,10 +174,17 @@ class MenuDialogFragment : BottomSheetDialogFragment() {
                                 } else {
                                     null
                                 },
-                                isDesktopMode = if (args.accesspoint == MenuAccessPoint.Home) {
-                                    settings.openNextTabInDesktopMode
-                                } else {
-                                    selectedTab?.content?.desktopMode ?: false
+                                customTabSessionId = args.customTabSessionId,
+                                isDesktopMode = when (args.accesspoint) {
+                                    MenuAccessPoint.Home -> {
+                                        settings.openNextTabInDesktopMode
+                                    }
+                                    MenuAccessPoint.External -> {
+                                        customTab?.content?.desktopMode ?: false
+                                    }
+                                    else -> {
+                                        selectedTab?.content?.desktopMode ?: false
+                                    }
                                 },
                             ),
                             middleware = listOf(
@@ -216,6 +239,9 @@ class MenuDialogFragment : BottomSheetDialogFragment() {
                             ),
                         )
                     }
+                    val isDesktopMode by store.observeAsState(initialValue = false) { state ->
+                        state.isDesktopMode
+                    }
                     val recommendedAddons by store.observeAsState(initialValue = emptyList()) { state ->
                         state.extensionMenuState.recommendedAddons
                     }
@@ -240,7 +266,45 @@ class MenuDialogFragment : BottomSheetDialogFragment() {
                             MenuAccessPoint.External -> CUSTOM_TAB_MENU_ROUTE
                         },
                     ) {
-                        composable(route = MAIN_MENU_ROUTE) {
+                        composable(
+                            route = MAIN_MENU_ROUTE,
+                            enterTransition = {
+                                (
+                                    enterMenu().togetherWith(
+                                        exitSubmenu(),
+                                    ) using SizeTransform { initialSize, targetSize ->
+                                        contentGrowth(initialSize, targetSize)
+                                    }
+                                    ).targetContentEnter
+                            },
+                            popEnterTransition = {
+                                (
+                                    enterMenu().togetherWith(
+                                        exitSubmenu(),
+                                    ) using SizeTransform { initialSize, targetSize ->
+                                        contentGrowth(initialSize, targetSize)
+                                    }
+                                    ).targetContentEnter
+                            },
+                            exitTransition = {
+                                (
+                                    enterSubmenu().togetherWith(
+                                        exitMenu(),
+                                    ) using SizeTransform { initialSize, targetSize ->
+                                        contentGrowth(initialSize, targetSize)
+                                    }
+                                    ).initialContentExit
+                            },
+                            popExitTransition = {
+                                (
+                                    enterSubmenu().togetherWith(
+                                        exitMenu(),
+                                    ) using SizeTransform { initialSize, targetSize ->
+                                        contentGrowth(initialSize, targetSize)
+                                    }
+                                    ).initialContentExit
+                            },
+                        ) {
                             if (settings.shouldShowMenuCFR) {
                                 MainMenuWithCFR(
                                     accessPoint = args.accesspoint,
@@ -248,6 +312,7 @@ class MenuDialogFragment : BottomSheetDialogFragment() {
                                     syncStore = syncStore,
                                     showQuitMenu = settings.shouldDeleteBrowsingDataOnQuit,
                                     isPrivate = browsingModeManager.mode.isPrivate,
+                                    isDesktopMode = isDesktopMode,
                                     isTranslationSupported = isTranslationSupported,
                                     isExtensionsProcessDisabled = isExtensionsProcessDisabled,
                                 )
@@ -258,13 +323,52 @@ class MenuDialogFragment : BottomSheetDialogFragment() {
                                     syncStore = syncStore,
                                     showQuitMenu = settings.shouldDeleteBrowsingDataOnQuit,
                                     isPrivate = browsingModeManager.mode.isPrivate,
+                                    isDesktopMode = isDesktopMode,
                                     isTranslationSupported = isTranslationSupported,
                                     isExtensionsProcessDisabled = isExtensionsProcessDisabled,
                                 )
                             }
                         }
 
-                        composable(route = TOOLS_MENU_ROUTE) {
+                        composable(
+                            route = TOOLS_MENU_ROUTE,
+                            enterTransition = {
+                                (
+                                    enterSubmenu().togetherWith(
+                                        exitMenu(),
+                                    ) using SizeTransform { initialSize, targetSize ->
+                                        contentGrowth(initialSize, targetSize)
+                                    }
+                                    ).targetContentEnter
+                            },
+                            popEnterTransition = {
+                                (
+                                    enterSubmenu().togetherWith(
+                                        exitMenu(),
+                                    ) using SizeTransform { initialSize, targetSize ->
+                                        contentGrowth(initialSize, targetSize)
+                                    }
+                                    ).targetContentEnter
+                            },
+                            exitTransition = {
+                                (
+                                    enterMenu().togetherWith(
+                                        exitSubmenu(),
+                                    ) using SizeTransform { initialSize, targetSize ->
+                                        contentGrowth(initialSize, targetSize)
+                                    }
+                                    ).initialContentExit
+                            },
+                            popExitTransition = {
+                                (
+                                    enterMenu().togetherWith(
+                                        exitSubmenu(),
+                                    ) using SizeTransform { initialSize, targetSize ->
+                                        contentGrowth(initialSize, targetSize)
+                                    }
+                                    ).initialContentExit
+                            },
+                        ) {
                             val appLinksRedirect = if (selectedTab?.content?.url != null) {
                                 appLinksUseCases.appLinkRedirect(selectedTab.content.url)
                             } else {
@@ -315,7 +419,45 @@ class MenuDialogFragment : BottomSheetDialogFragment() {
                             )
                         }
 
-                        composable(route = SAVE_MENU_ROUTE) {
+                        composable(
+                            route = SAVE_MENU_ROUTE,
+                            enterTransition = {
+                                (
+                                    enterSubmenu().togetherWith(
+                                        exitMenu(),
+                                    ) using SizeTransform { initialSize, targetSize ->
+                                        contentGrowth(initialSize, targetSize)
+                                    }
+                                    ).targetContentEnter
+                            },
+                            popEnterTransition = {
+                                (
+                                    enterSubmenu().togetherWith(
+                                        exitMenu(),
+                                    ) using SizeTransform { initialSize, targetSize ->
+                                        contentGrowth(initialSize, targetSize)
+                                    }
+                                    ).targetContentEnter
+                            },
+                            exitTransition = {
+                                (
+                                    enterMenu().togetherWith(
+                                        exitSubmenu(),
+                                    ) using SizeTransform { initialSize, targetSize ->
+                                        contentGrowth(initialSize, targetSize)
+                                    }
+                                    ).initialContentExit
+                            },
+                            popExitTransition = {
+                                (
+                                    enterMenu().togetherWith(
+                                        exitSubmenu(),
+                                    ) using SizeTransform { initialSize, targetSize ->
+                                        contentGrowth(initialSize, targetSize)
+                                    }
+                                    ).initialContentExit
+                            },
+                        ) {
                             SaveSubmenu(
                                 isBookmarked = isBookmarked,
                                 isPinned = isPinned,
@@ -353,7 +495,45 @@ class MenuDialogFragment : BottomSheetDialogFragment() {
                             )
                         }
 
-                        composable(route = EXTENSIONS_MENU_ROUTE) {
+                        composable(
+                            route = EXTENSIONS_MENU_ROUTE,
+                            enterTransition = {
+                                (
+                                    enterSubmenu().togetherWith(
+                                        exitMenu(),
+                                    ) using SizeTransform { initialSize, targetSize ->
+                                        contentGrowth(initialSize, targetSize)
+                                    }
+                                    ).targetContentEnter
+                            },
+                            popEnterTransition = {
+                                (
+                                    enterSubmenu().togetherWith(
+                                        exitMenu(),
+                                    ) using SizeTransform { initialSize, targetSize ->
+                                        contentGrowth(initialSize, targetSize)
+                                    }
+                                    ).targetContentEnter
+                            },
+                            exitTransition = {
+                                (
+                                    enterMenu().togetherWith(
+                                        exitSubmenu(),
+                                    ) using SizeTransform { initialSize, targetSize ->
+                                        contentGrowth(initialSize, targetSize)
+                                    }
+                                    ).initialContentExit
+                            },
+                            popExitTransition = {
+                                (
+                                    enterMenu().togetherWith(
+                                        exitSubmenu(),
+                                    ) using SizeTransform { initialSize, targetSize ->
+                                        contentGrowth(initialSize, targetSize)
+                                    }
+                                    ).initialContentExit
+                            },
+                        ) {
                             ExtensionsSubmenu(
                                 recommendedAddons = recommendedAddons,
                                 showExtensionsOnboarding = true,
@@ -379,11 +559,8 @@ class MenuDialogFragment : BottomSheetDialogFragment() {
                         }
 
                         composable(route = CUSTOM_TAB_MENU_ROUTE) {
-                            val customTab = args.customTabSessionId?.let {
-                                browserStore.state.findCustomTab(it)
-                            }
-
                             CustomTabMenu(
+                                isDesktopMode = isDesktopMode,
                                 customTabMenuItems = customTab?.config?.menuItems,
                                 onCustomMenuItemClick = { intent: PendingIntent ->
                                     store.dispatch(
@@ -393,7 +570,13 @@ class MenuDialogFragment : BottomSheetDialogFragment() {
                                         ),
                                     )
                                 },
-                                onSwitchToDesktopSiteMenuClick = {},
+                                onSwitchToDesktopSiteMenuClick = {
+                                    if (isDesktopMode) {
+                                        store.dispatch(MenuAction.RequestMobileSite)
+                                    } else {
+                                        store.dispatch(MenuAction.RequestDesktopSite)
+                                    }
+                                },
                                 onFindInPageMenuClick = {
                                     store.dispatch(MenuAction.FindInPage)
                                 },

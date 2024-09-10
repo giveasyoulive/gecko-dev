@@ -52,14 +52,14 @@ ChromeUtils.defineESModuleGetters(lazy, {
 
 const HTML_NS = "http://www.w3.org/1999/xhtml";
 
-const SHARED_SWATCH_CLASS = "ruleview-swatch";
-const COLOR_SWATCH_CLASS = "ruleview-colorswatch";
-const BEZIER_SWATCH_CLASS = "ruleview-bezierswatch";
-const LINEAR_EASING_SWATCH_CLASS = "ruleview-lineareasingswatch";
-const FILTER_SWATCH_CLASS = "ruleview-filterswatch";
-const ANGLE_SWATCH_CLASS = "ruleview-angleswatch";
+const SHARED_SWATCH_CLASS = "inspector-swatch";
+const COLOR_SWATCH_CLASS = "inspector-colorswatch";
+const BEZIER_SWATCH_CLASS = "inspector-bezierswatch";
+const LINEAR_EASING_SWATCH_CLASS = "inspector-lineareasingswatch";
+const FILTER_SWATCH_CLASS = "inspector-filterswatch";
+const ANGLE_SWATCH_CLASS = "inspector-angleswatch";
 const FONT_FAMILY_CLASS = "ruleview-font-family";
-const SHAPE_SWATCH_CLASS = "ruleview-shapeswatch";
+const SHAPE_SWATCH_CLASS = "inspector-shapeswatch";
 
 /*
  * An actionable element is an element which on click triggers a specific action
@@ -581,7 +581,7 @@ TextPropertyEditor.prototype = {
     }
 
     const outputParser = this.ruleView._outputParser;
-    const parserOptions = {
+    this.outputParserOptions = {
       angleClass: "ruleview-angle",
       angleSwatchClass: SHARED_SWATCH_CLASS + " " + ANGLE_SWATCH_CLASS,
       bezierClass: "ruleview-bezier",
@@ -590,12 +590,12 @@ TextPropertyEditor.prototype = {
       colorSwatchClass: SHARED_SWATCH_CLASS + " " + COLOR_SWATCH_CLASS,
       filterClass: "ruleview-filter",
       filterSwatchClass: SHARED_SWATCH_CLASS + " " + FILTER_SWATCH_CLASS,
-      flexClass: "ruleview-flex js-toggle-flexbox-highlighter",
-      gridClass: "ruleview-grid js-toggle-grid-highlighter",
+      flexClass: "inspector-flex js-toggle-flexbox-highlighter",
+      gridClass: "inspector-grid js-toggle-grid-highlighter",
       linearEasingClass: "ruleview-lineareasing",
       linearEasingSwatchClass:
         SHARED_SWATCH_CLASS + " " + LINEAR_EASING_SWATCH_CLASS,
-      shapeClass: "ruleview-shape",
+      shapeClass: "inspector-shape",
       shapeSwatchClass: SHAPE_SWATCH_CLASS,
       // Only ask the parser to convert colors to the default color type specified by the
       // user if the property hasn't been changed yet.
@@ -604,8 +604,8 @@ TextPropertyEditor.prototype = {
       urlClass: "theme-link",
       fontFamilyClass: FONT_FAMILY_CLASS,
       baseURI: this.sheetHref,
-      unmatchedClass: "ruleview-unmatched",
-      matchedVariableClass: "ruleview-variable",
+      unmatchedClass: "inspector-unmatched",
+      matchedVariableClass: "inspector-variable",
       getVariableData: varName =>
         this.rule.elementStyle.getVariableData(
           varName,
@@ -615,9 +615,13 @@ TextPropertyEditor.prototype = {
     };
 
     if (this.rule.darkColorScheme !== undefined) {
-      parserOptions.isDarkColorScheme = this.rule.darkColorScheme;
+      this.outputParserOptions.isDarkColorScheme = this.rule.darkColorScheme;
     }
-    const frag = outputParser.parseCssProperty(name, val, parserOptions);
+    const frag = outputParser.parseCssProperty(
+      name,
+      val,
+      this.outputParserOptions
+    );
 
     // Save the initial value as the last committed value,
     // for restoring after pressing escape.
@@ -755,7 +759,7 @@ TextPropertyEditor.prototype = {
     const span = this.valueSpan.querySelector("." + FILTER_SWATCH_CLASS);
     if (this.ruleEditor.isEditable) {
       if (span) {
-        parserOptions.filterSwatch = true;
+        this.outputParserOptions.filterSwatch = true;
 
         this.ruleView.tooltips.getTooltip("filterEditor").addSwatch(
           span,
@@ -766,7 +770,7 @@ TextPropertyEditor.prototype = {
             onRevert: this._onSwatchRevert,
           },
           outputParser,
-          parserOptions
+          this.outputParserOptions
         );
         const title = l10n("rule.filterSwatch.tooltip");
         span.setAttribute("title", title);
@@ -786,7 +790,7 @@ TextPropertyEditor.prototype = {
 
     const nodeFront = this.ruleView.inspector.selection.nodeFront;
 
-    const flexToggle = this.valueSpan.querySelector(".ruleview-flex");
+    const flexToggle = this.valueSpan.querySelector(".inspector-flex");
     if (flexToggle) {
       flexToggle.setAttribute("title", l10n("rule.flexToggle.tooltip"));
       flexToggle.setAttribute(
@@ -797,7 +801,7 @@ TextPropertyEditor.prototype = {
       );
     }
 
-    const gridToggle = this.valueSpan.querySelector(".ruleview-grid");
+    const gridToggle = this.valueSpan.querySelector(".inspector-grid");
     if (gridToggle) {
       gridToggle.setAttribute("title", l10n("rule.gridToggle.tooltip"));
       gridToggle.setAttribute(
@@ -810,7 +814,7 @@ TextPropertyEditor.prototype = {
       );
     }
 
-    const shapeToggle = this.valueSpan.querySelector(".ruleview-shapeswatch");
+    const shapeToggle = this.valueSpan.querySelector(".inspector-shapeswatch");
     if (shapeToggle) {
       const mode =
         "css" +
@@ -1064,7 +1068,7 @@ TextPropertyEditor.prototype = {
 
     const outputParser = this.ruleView._outputParser;
     const frag = outputParser.parseCssProperty(computed.name, computed.value, {
-      colorSwatchClass: "ruleview-swatch ruleview-colorswatch",
+      colorSwatchClass: "inspector-swatch inspector-colorswatch",
       urlClass: "theme-link",
       baseURI: this.sheetHref,
       fontFamilyClass: "ruleview-font-family",
@@ -1567,8 +1571,9 @@ TextPropertyEditor.prototype = {
     const { value, unit } = this._draggingValueCache;
     // We use toFixed to avoid the case where value is too long, 9.00001px for example
     const roundedValue = Number.isInteger(value) ? value : value.toFixed(1);
-    this.prop.setValue(roundedValue + unit, this.prop.priority);
-    this.ruleView.emitForTests("property-updated-by-dragging");
+    this.prop
+      .setValue(roundedValue + unit, this.prop.priority)
+      .then(() => this.ruleView.emitForTests("property-updated-by-dragging"));
     this._hasDragged = true;
   },
 

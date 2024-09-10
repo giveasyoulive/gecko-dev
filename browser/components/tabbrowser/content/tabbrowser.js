@@ -336,6 +336,10 @@
       return this.tabContainer.allTabs;
     },
 
+    get tabGroups() {
+      return this.tabContainer.allGroups;
+    },
+
     get tabbox() {
       delete this.tabbox;
       return (this.tabbox = document.getElementById("tabbrowser-tabbox"));
@@ -1925,20 +1929,20 @@
           browser = this.selectedBrowser;
           targetTabIndex = this.tabContainer.selectedIndex;
         }
-        let flags = LOAD_FLAGS_NONE;
+        let loadFlags = LOAD_FLAGS_NONE;
         if (allowThirdPartyFixup) {
-          flags |=
+          loadFlags |=
             LOAD_FLAGS_ALLOW_THIRD_PARTY_FIXUP | LOAD_FLAGS_FIXUP_SCHEME_TYPOS;
         }
         if (!allowInheritPrincipal) {
-          flags |= LOAD_FLAGS_DISALLOW_INHERIT_PRINCIPAL;
+          loadFlags |= LOAD_FLAGS_DISALLOW_INHERIT_PRINCIPAL;
         }
         if (fromExternal) {
-          flags |= LOAD_FLAGS_FROM_EXTERNAL;
+          loadFlags |= LOAD_FLAGS_FROM_EXTERNAL;
         }
         try {
           browser.fixupAndLoadURIString(aURIs[0], {
-            flags,
+            loadFlags,
             postData: postDatas && postDatas[0],
             triggeringPrincipal,
             csp,
@@ -2924,13 +2928,35 @@
       return t;
     },
 
-    addTabGroup(color, label = "") {
+    addTabGroup(color, label = "", tabs) {
+      if (!tabs?.length) {
+        throw new Error("Cannot create tab group with zero tabs");
+      }
+
       let group = document.createXULElement("tab-group", { is: "tab-group" });
       group.id = `${Date.now()}-${Math.round(Math.random() * 100)}`;
       group.color = color;
       group.label = label;
       this.tabContainer.appendChild(group);
+      group.addTabs(tabs);
       return group;
+    },
+
+    removeTabGroup(group) {
+      this.removeTabs(group.tabs);
+    },
+
+    adoptTabGroup(group, index) {
+      if (group.ownerDocument == document) {
+        return;
+      }
+
+      let newTabs = [];
+      for (let tab of group.tabs) {
+        newTabs.push(this.adoptTab(tab, index));
+      }
+
+      this.addTabGroup(group.color, group.label, newTabs);
     },
 
     _determineURIToLoad(uriString, createLazyBrowser) {
@@ -3180,30 +3206,30 @@
           browser.userTypedValue = uriString;
         }
 
-        let flags = LOAD_FLAGS_NONE;
+        let loadFlags = LOAD_FLAGS_NONE;
         if (allowThirdPartyFixup) {
-          flags |=
+          loadFlags |=
             LOAD_FLAGS_ALLOW_THIRD_PARTY_FIXUP | LOAD_FLAGS_FIXUP_SCHEME_TYPOS;
         }
         if (fromExternal) {
-          flags |= LOAD_FLAGS_FROM_EXTERNAL;
+          loadFlags |= LOAD_FLAGS_FROM_EXTERNAL;
         } else if (!triggeringPrincipal.isSystemPrincipal) {
           // XXX this code must be reviewed and changed when bug 1616353
           // lands.
-          flags |= LOAD_FLAGS_FIRST_LOAD;
+          loadFlags |= LOAD_FLAGS_FIRST_LOAD;
         }
         if (!allowInheritPrincipal) {
-          flags |= LOAD_FLAGS_DISALLOW_INHERIT_PRINCIPAL;
+          loadFlags |= LOAD_FLAGS_DISALLOW_INHERIT_PRINCIPAL;
         }
         if (disableTRR) {
-          flags |= LOAD_FLAGS_DISABLE_TRR;
+          loadFlags |= LOAD_FLAGS_DISABLE_TRR;
         }
         if (forceAllowDataURI) {
-          flags |= LOAD_FLAGS_FORCE_ALLOW_DATA_URI;
+          loadFlags |= LOAD_FLAGS_FORCE_ALLOW_DATA_URI;
         }
         try {
           browser.fixupAndLoadURIString(uriString, {
-            flags,
+            loadFlags,
             triggeringPrincipal,
             referrerInfo,
             charset,
@@ -4468,9 +4494,6 @@
         if (aNewTab) {
           gURLBar.select();
         }
-
-        // workaround for bug 345399
-        this.tabContainer.arrowScrollbox._updateScrollButtonsDisabledState();
       }
 
       // We're going to remove the tab and the browser now.
@@ -5348,12 +5371,12 @@
       if (aTab.group && aTab.group.id === aGroup.id) {
         return;
       }
+
+      let oldPosition = aTab._tPos;
       let wasFocused = document.activeElement == this.selectedTab;
       aGroup.appendChild(aTab);
 
-      // pass -1 to oldPosition because a move occurred even if position
-      // hasn't changed
-      this._updateAfterMoveTabTo(aTab, -1, wasFocused);
+      this._updateAfterMoveTabTo(aTab, oldPosition, wasFocused);
     },
 
     _updateAfterMoveTabTo(aTab, oldPosition, wasFocused = null) {
@@ -5372,8 +5395,8 @@
       if (aTab.pinned) {
         this.tabContainer._positionPinnedTabs();
       }
-      // Pinning and unpinning vertical tabs bypasses moveTabTo,
-      // so we still want to check whether its worth dispatching an event
+      // Pinning/unpinning vertical tabs, and moving tabs into tab groups, both bypass moveTabTo.
+      // We still want to check whether its worth dispatching an event.
       if (oldPosition == aTab._tPos) {
         return;
       }
@@ -7131,6 +7154,12 @@
           !(originalLocation.spec in FAVICON_DEFAULTS)
         ) {
           this.mTab.removeAttribute("image");
+        } else {
+          // Bug 1804166: Allow new tabs to set the favicon correctly if the
+          // new tabs behavior is set to open a blank page
+          // This is a no-op unless this.mBrowser._documentURI is in
+          // FAVICON_DEFAULTS.
+          gBrowser.setDefaultIcon(this.mTab, this.mBrowser._documentURI);
         }
 
         // For keyword URIs clear the user typed value since they will be changed into real URIs
@@ -7287,12 +7316,6 @@
               // to this new document and not to tabs opened by the previous one.
               gBrowser.clearRelatedTabs();
             }
-          }
-
-          // Bug 1804166: Allow new tabs to set the favicon correctly if the
-          // new tabs behavior is set to open a blank page
-          if (!isReload && !aWebProgress.isLoadingDocument) {
-            gBrowser.setDefaultIcon(this.mTab, this.mBrowser._documentURI);
           }
 
           if (

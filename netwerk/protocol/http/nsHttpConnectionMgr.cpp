@@ -905,7 +905,7 @@ void nsHttpConnectionMgr::UpdateCoalescingForNewConn(
              "could have served H2 newConn graceful close of newConn=%p to "
              "migrate to existingConn %p\n",
              newConn, existingConn));
-        existingConn->SetCloseReason(
+        newConn->SetCloseReason(
             ConnectionCloseReason::CLOSE_NEW_CONN_FOR_COALESCING);
         newConn->DontReuse();
         return;
@@ -916,7 +916,7 @@ void nsHttpConnectionMgr::UpdateCoalescingForNewConn(
            "have served newConn "
            "graceful close of newConn=%p to migrate to existingConn %p\n",
            newConn, existingConn));
-      existingConn->SetCloseReason(
+      newConn->SetCloseReason(
           ConnectionCloseReason::CLOSE_NEW_CONN_FOR_COALESCING);
       newConn->DontReuse();
       return;
@@ -1679,7 +1679,8 @@ nsresult nsHttpConnectionMgr::DispatchTransaction(ConnectionEntry* ent,
 
   PROFILER_MARKER(
       "DispatchTransaction", NETWORK,
-      MarkerOptions(MarkerTiming::Interval(trans->GetPendingTime(), now)),
+      MarkerOptions(MarkerThreadId::MainThread(),
+                    MarkerTiming::Interval(trans->GetPendingTime(), now)),
       UrlMarker, trans->GetUrl(), elapsed, trans->ChannelId());
 
   nsAutoCString httpVersionkey("h1"_ns);
@@ -1789,8 +1790,9 @@ nsresult nsHttpConnectionMgr::ProcessNewTransaction(nsHttpTransaction* trans) {
 
   trans->SetPendingTime();
 
-  PROFILER_MARKER("ProcessNewTransaction", NETWORK, {}, UrlMarker,
-                  trans->GetUrl(), TimeDuration::Zero(), trans->ChannelId());
+  PROFILER_MARKER("ProcessNewTransaction", NETWORK,
+                  MarkerThreadId::MainThread(), UrlMarker, trans->GetUrl(),
+                  TimeDuration::Zero(), trans->ChannelId());
 
   RefPtr<Http2PushedStreamWrapper> pushedStreamWrapper =
       trans->GetPushedStream();

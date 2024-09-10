@@ -954,7 +954,7 @@ dependencies = [
 [[package]]
 name = "coreaudio-sys-utils"
 version = "0.1.0"
-source = "git+https://github.com/mozilla/cubeb-coreaudio-rs?rev=0f642c8d50f67c413766958adc710a59d306e31c#0f642c8d50f67c413766958adc710a59d306e31c"
+source = "git+https://github.com/mozilla/cubeb-coreaudio-rs?rev=f7e50c2166f4564cad6966b629f06c6f75391a6f#f7e50c2166f4564cad6966b629f06c6f75391a6f"
 dependencies = [
  "core-foundation-sys",
  "coreaudio-sys",
@@ -1202,7 +1202,7 @@ dependencies = [
 [[package]]
 name = "cubeb-coreaudio"
 version = "0.1.0"
-source = "git+https://github.com/mozilla/cubeb-coreaudio-rs?rev=0f642c8d50f67c413766958adc710a59d306e31c#0f642c8d50f67c413766958adc710a59d306e31c"
+source = "git+https://github.com/mozilla/cubeb-coreaudio-rs?rev=f7e50c2166f4564cad6966b629f06c6f75391a6f#f7e50c2166f4564cad6966b629f06c6f75391a6f"
 dependencies = [
  "atomic",
  "audio-mixer",
@@ -1237,16 +1237,6 @@ checksum = "26073cd50c7b6ba4272204839f56921557609a0d67e092882cbb903df94cab39"
 dependencies = [
  "cmake",
  "pkg-config",
-]
-
-[[package]]
-name = "d3d12"
-version = "22.0.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=c6a3d927345a81eeb13e9e3720002c4cc6f25e54#c6a3d927345a81eeb13e9e3720002c4cc6f25e54"
-dependencies = [
- "bitflags 2.6.0",
- "libloading",
- "winapi",
 ]
 
 [[package]]
@@ -1718,7 +1708,7 @@ dependencies = [
 [[package]]
 name = "error-support"
 version = "0.1.0"
-source = "git+https://github.com/mozilla/application-services?rev=c3774b262f27fabdd8ae7d064db5745029b347b9#c3774b262f27fabdd8ae7d064db5745029b347b9"
+source = "git+https://github.com/mozilla/application-services?rev=dbeaef2eb28e9da7cc2f96e26296513cc4e07c07#dbeaef2eb28e9da7cc2f96e26296513cc4e07c07"
 dependencies = [
  "error-support-macros",
  "lazy_static",
@@ -1730,7 +1720,7 @@ dependencies = [
 [[package]]
 name = "error-support-macros"
 version = "0.1.0"
-source = "git+https://github.com/mozilla/application-services?rev=c3774b262f27fabdd8ae7d064db5745029b347b9#c3774b262f27fabdd8ae7d064db5745029b347b9"
+source = "git+https://github.com/mozilla/application-services?rev=dbeaef2eb28e9da7cc2f96e26296513cc4e07c07#dbeaef2eb28e9da7cc2f96e26296513cc4e07c07"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2333,6 +2323,7 @@ dependencies = [
  "kvstore",
  "l10nregistry",
  "l10nregistry-ffi",
+ "libz-rs-sys",
  "lmdb-rkv-sys",
  "localization-ffi",
  "log",
@@ -2479,9 +2470,9 @@ dependencies = [
 
 [[package]]
 name = "glslopt"
-version = "0.1.10"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee5be629003d587bab188f3e2e3b010aa2cde7c41ec967b3a244f388d4d81877"
+checksum = "913662ae8335df058d56e00f11340b20fa82e03e0276587797ef325ab01e50d4"
 dependencies = [
  "cc",
 ]
@@ -2560,7 +2551,6 @@ dependencies = [
  "log",
  "presser",
  "thiserror",
- "winapi",
  "windows",
 ]
 
@@ -3046,7 +3036,7 @@ dependencies = [
 [[package]]
 name = "interrupt-support"
 version = "0.1.0"
-source = "git+https://github.com/mozilla/application-services?rev=c3774b262f27fabdd8ae7d064db5745029b347b9#c3774b262f27fabdd8ae7d064db5745029b347b9"
+source = "git+https://github.com/mozilla/application-services?rev=dbeaef2eb28e9da7cc2f96e26296513cc4e07c07#dbeaef2eb28e9da7cc2f96e26296513cc4e07c07"
 dependencies = [
  "lazy_static",
  "parking_lot",
@@ -3416,6 +3406,14 @@ version = "0.1.3"
 dependencies = [
  "lazy_static",
  "libc",
+]
+
+[[package]]
+name = "libz-rs-sys"
+version = "0.2.1"
+source = "git+https://github.com/memorysafety/zlib-rs?rev=4aa430ccb77537d0d60dab8db993ca51bb1194c5#4aa430ccb77537d0d60dab8db993ca51bb1194c5"
+dependencies = [
+ "zlib-rs",
 ]
 
 [[package]]
@@ -4027,7 +4025,7 @@ checksum = "a2983372caf4480544083767bf2d27defafe32af49ab4df3a0b7fc90793a3664"
 [[package]]
 name = "naga"
 version = "22.0.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=c6a3d927345a81eeb13e9e3720002c4cc6f25e54#c6a3d927345a81eeb13e9e3720002c4cc6f25e54"
+source = "git+https://github.com/gfx-rs/wgpu?rev=bbdbafdf8a947b563b46f632a778632b906d9eb4#bbdbafdf8a947b563b46f632a778632b906d9eb4"
 dependencies = [
  "arrayvec",
  "bit-set",
@@ -4047,8 +4045,8 @@ dependencies = [
 
 [[package]]
 name = "neqo-bin"
-version = "0.8.2"
-source = "git+https://github.com/mozilla/neqo?tag=v0.8.2#b7e17668eb8f2fb13c1d945a9a7f79bd31257eb8"
+version = "0.9.0"
+source = "git+https://github.com/mozilla/neqo?tag=v0.9.0#28f60bd0ba3209ecba4102eec123859a3a8afd45"
 dependencies = [
  "clap",
  "clap-verbosity-flag",
@@ -4069,21 +4067,20 @@ dependencies = [
 
 [[package]]
 name = "neqo-common"
-version = "0.8.2"
-source = "git+https://github.com/mozilla/neqo?tag=v0.8.2#b7e17668eb8f2fb13c1d945a9a7f79bd31257eb8"
+version = "0.9.0"
+source = "git+https://github.com/mozilla/neqo?tag=v0.9.0#28f60bd0ba3209ecba4102eec123859a3a8afd45"
 dependencies = [
  "enum-map",
  "env_logger",
  "log",
  "qlog",
- "time 0.3.36",
- "winapi",
+ "windows",
 ]
 
 [[package]]
 name = "neqo-crypto"
-version = "0.8.2"
-source = "git+https://github.com/mozilla/neqo?tag=v0.8.2#b7e17668eb8f2fb13c1d945a9a7f79bd31257eb8"
+version = "0.9.0"
+source = "git+https://github.com/mozilla/neqo?tag=v0.9.0#28f60bd0ba3209ecba4102eec123859a3a8afd45"
 dependencies = [
  "bindgen 0.69.4",
  "log",
@@ -4097,8 +4094,8 @@ dependencies = [
 
 [[package]]
 name = "neqo-http3"
-version = "0.8.2"
-source = "git+https://github.com/mozilla/neqo?tag=v0.8.2#b7e17668eb8f2fb13c1d945a9a7f79bd31257eb8"
+version = "0.9.0"
+source = "git+https://github.com/mozilla/neqo?tag=v0.9.0#28f60bd0ba3209ecba4102eec123859a3a8afd45"
 dependencies = [
  "enumset",
  "log",
@@ -4113,8 +4110,8 @@ dependencies = [
 
 [[package]]
 name = "neqo-qpack"
-version = "0.8.2"
-source = "git+https://github.com/mozilla/neqo?tag=v0.8.2#b7e17668eb8f2fb13c1d945a9a7f79bd31257eb8"
+version = "0.9.0"
+source = "git+https://github.com/mozilla/neqo?tag=v0.9.0#28f60bd0ba3209ecba4102eec123859a3a8afd45"
 dependencies = [
  "log",
  "neqo-common",
@@ -4125,8 +4122,8 @@ dependencies = [
 
 [[package]]
 name = "neqo-transport"
-version = "0.8.2"
-source = "git+https://github.com/mozilla/neqo?tag=v0.8.2#b7e17668eb8f2fb13c1d945a9a7f79bd31257eb8"
+version = "0.9.0"
+source = "git+https://github.com/mozilla/neqo?tag=v0.9.0#28f60bd0ba3209ecba4102eec123859a3a8afd45"
 dependencies = [
  "enum-map",
  "indexmap 2.2.6",
@@ -4140,8 +4137,8 @@ dependencies = [
 
 [[package]]
 name = "neqo-udp"
-version = "0.8.2"
-source = "git+https://github.com/mozilla/neqo?tag=v0.8.2#b7e17668eb8f2fb13c1d945a9a7f79bd31257eb8"
+version = "0.9.0"
+source = "git+https://github.com/mozilla/neqo?tag=v0.9.0#28f60bd0ba3209ecba4102eec123859a3a8afd45"
 dependencies = [
  "log",
  "neqo-common",
@@ -4253,7 +4250,7 @@ dependencies = [
 [[package]]
 name = "nss_build_common"
 version = "0.1.0"
-source = "git+https://github.com/mozilla/application-services?rev=c3774b262f27fabdd8ae7d064db5745029b347b9#c3774b262f27fabdd8ae7d064db5745029b347b9"
+source = "git+https://github.com/mozilla/application-services?rev=dbeaef2eb28e9da7cc2f96e26296513cc4e07c07#dbeaef2eb28e9da7cc2f96e26296513cc4e07c07"
 
 [[package]]
 name = "nsstring"
@@ -4466,7 +4463,7 @@ checksum = "d01a5bd0424d00070b0098dd17ebca6f961a959dead1dbcbbbc1d1cd8d3deeba"
 [[package]]
 name = "payload-support"
 version = "0.1.0"
-source = "git+https://github.com/mozilla/application-services?rev=c3774b262f27fabdd8ae7d064db5745029b347b9#c3774b262f27fabdd8ae7d064db5745029b347b9"
+source = "git+https://github.com/mozilla/application-services?rev=dbeaef2eb28e9da7cc2f96e26296513cc4e07c07#dbeaef2eb28e9da7cc2f96e26296513cc4e07c07"
 dependencies = [
  "serde",
  "serde_derive",
@@ -4938,7 +4935,7 @@ checksum = "dbb5fb1acd8a1a18b3dd5be62d25485eb770e05afb408a9627d14d451bae12da"
 [[package]]
 name = "relevancy"
 version = "0.1.0"
-source = "git+https://github.com/mozilla/application-services?rev=c3774b262f27fabdd8ae7d064db5745029b347b9#c3774b262f27fabdd8ae7d064db5745029b347b9"
+source = "git+https://github.com/mozilla/application-services?rev=dbeaef2eb28e9da7cc2f96e26296513cc4e07c07#dbeaef2eb28e9da7cc2f96e26296513cc4e07c07"
 dependencies = [
  "anyhow",
  "base64 0.21.3",
@@ -4961,7 +4958,7 @@ dependencies = [
 [[package]]
 name = "remote_settings"
 version = "0.1.0"
-source = "git+https://github.com/mozilla/application-services?rev=c3774b262f27fabdd8ae7d064db5745029b347b9#c3774b262f27fabdd8ae7d064db5745029b347b9"
+source = "git+https://github.com/mozilla/application-services?rev=dbeaef2eb28e9da7cc2f96e26296513cc4e07c07#dbeaef2eb28e9da7cc2f96e26296513cc4e07c07"
 dependencies = [
  "log",
  "parking_lot",
@@ -5519,7 +5516,7 @@ dependencies = [
 [[package]]
 name = "sql-support"
 version = "0.1.0"
-source = "git+https://github.com/mozilla/application-services?rev=c3774b262f27fabdd8ae7d064db5745029b347b9#c3774b262f27fabdd8ae7d064db5745029b347b9"
+source = "git+https://github.com/mozilla/application-services?rev=dbeaef2eb28e9da7cc2f96e26296513cc4e07c07#dbeaef2eb28e9da7cc2f96e26296513cc4e07c07"
 dependencies = [
  "ffi-support",
  "interrupt-support",
@@ -5701,7 +5698,7 @@ checksum = "81cdd64d312baedb58e21336b31bc043b77e01cc99033ce76ef539f78e965ebc"
 [[package]]
 name = "suggest"
 version = "0.1.0"
-source = "git+https://github.com/mozilla/application-services?rev=c3774b262f27fabdd8ae7d064db5745029b347b9#c3774b262f27fabdd8ae7d064db5745029b347b9"
+source = "git+https://github.com/mozilla/application-services?rev=dbeaef2eb28e9da7cc2f96e26296513cc4e07c07#dbeaef2eb28e9da7cc2f96e26296513cc4e07c07"
 dependencies = [
  "anyhow",
  "chrono",
@@ -5753,7 +5750,7 @@ dependencies = [
 [[package]]
 name = "sync-guid"
 version = "0.1.0"
-source = "git+https://github.com/mozilla/application-services?rev=c3774b262f27fabdd8ae7d064db5745029b347b9#c3774b262f27fabdd8ae7d064db5745029b347b9"
+source = "git+https://github.com/mozilla/application-services?rev=dbeaef2eb28e9da7cc2f96e26296513cc4e07c07#dbeaef2eb28e9da7cc2f96e26296513cc4e07c07"
 dependencies = [
  "base64 0.21.3",
  "rand",
@@ -5764,7 +5761,7 @@ dependencies = [
 [[package]]
 name = "sync15"
 version = "0.1.0"
-source = "git+https://github.com/mozilla/application-services?rev=c3774b262f27fabdd8ae7d064db5745029b347b9#c3774b262f27fabdd8ae7d064db5745029b347b9"
+source = "git+https://github.com/mozilla/application-services?rev=dbeaef2eb28e9da7cc2f96e26296513cc4e07c07#dbeaef2eb28e9da7cc2f96e26296513cc4e07c07"
 dependencies = [
  "anyhow",
  "error-support",
@@ -5796,7 +5793,7 @@ dependencies = [
 [[package]]
 name = "tabs"
 version = "0.1.0"
-source = "git+https://github.com/mozilla/application-services?rev=c3774b262f27fabdd8ae7d064db5745029b347b9#c3774b262f27fabdd8ae7d064db5745029b347b9"
+source = "git+https://github.com/mozilla/application-services?rev=dbeaef2eb28e9da7cc2f96e26296513cc4e07c07#dbeaef2eb28e9da7cc2f96e26296513cc4e07c07"
 dependencies = [
  "anyhow",
  "error-support",
@@ -6121,7 +6118,7 @@ checksum = "497961ef93d974e23eb6f433eb5fe1b7930b659f06d12dec6fc44a8f554c0bba"
 [[package]]
 name = "types"
 version = "0.1.0"
-source = "git+https://github.com/mozilla/application-services?rev=c3774b262f27fabdd8ae7d064db5745029b347b9#c3774b262f27fabdd8ae7d064db5745029b347b9"
+source = "git+https://github.com/mozilla/application-services?rev=dbeaef2eb28e9da7cc2f96e26296513cc4e07c07#dbeaef2eb28e9da7cc2f96e26296513cc4e07c07"
 dependencies = [
  "rusqlite",
  "serde",
@@ -6204,9 +6201,9 @@ checksum = "c0edd1e5b14653f783770bce4a4dabb4a5108a5370a5f5d8cfe8710c361f6c8b"
 
 [[package]]
 name = "unicode-xid"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f962df74c8c05a667b5ee8bcf162993134c104e96440b663c8daa176dc772d8c"
+checksum = "229730647fbc343e3a80e463c1db7f78f3855d3f3739bee0dda773c9a037c90a"
 
 [[package]]
 name = "uniffi"
@@ -6488,7 +6485,7 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 [[package]]
 name = "viaduct"
 version = "0.1.0"
-source = "git+https://github.com/mozilla/application-services?rev=c3774b262f27fabdd8ae7d064db5745029b347b9#c3774b262f27fabdd8ae7d064db5745029b347b9"
+source = "git+https://github.com/mozilla/application-services?rev=dbeaef2eb28e9da7cc2f96e26296513cc4e07c07#dbeaef2eb28e9da7cc2f96e26296513cc4e07c07"
 dependencies = [
  "ffi-support",
  "log",
@@ -6636,7 +6633,7 @@ dependencies = [
 [[package]]
 name = "webext-storage"
 version = "0.1.0"
-source = "git+https://github.com/mozilla/application-services?rev=c3774b262f27fabdd8ae7d064db5745029b347b9#c3774b262f27fabdd8ae7d064db5745029b347b9"
+source = "git+https://github.com/mozilla/application-services?rev=dbeaef2eb28e9da7cc2f96e26296513cc4e07c07#dbeaef2eb28e9da7cc2f96e26296513cc4e07c07"
 dependencies = [
  "anyhow",
  "error-support",
@@ -6797,7 +6794,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core"
 version = "22.0.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=c6a3d927345a81eeb13e9e3720002c4cc6f25e54#c6a3d927345a81eeb13e9e3720002c4cc6f25e54"
+source = "git+https://github.com/gfx-rs/wgpu?rev=bbdbafdf8a947b563b46f632a778632b906d9eb4#bbdbafdf8a947b563b46f632a778632b906d9eb4"
 dependencies = [
  "arrayvec",
  "bit-vec",
@@ -6822,7 +6819,7 @@ dependencies = [
 [[package]]
 name = "wgpu-hal"
 version = "22.0.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=c6a3d927345a81eeb13e9e3720002c4cc6f25e54#c6a3d927345a81eeb13e9e3720002c4cc6f25e54"
+source = "git+https://github.com/gfx-rs/wgpu?rev=bbdbafdf8a947b563b46f632a778632b906d9eb4#bbdbafdf8a947b563b46f632a778632b906d9eb4"
 dependencies = [
  "android_system_properties",
  "arrayvec",
@@ -6832,7 +6829,6 @@ dependencies = [
  "block",
  "cfg_aliases",
  "core-graphics-types",
- "d3d12",
  "gpu-alloc",
  "gpu-allocator",
  "gpu-descriptor",
@@ -6855,13 +6851,14 @@ dependencies = [
  "wasm-bindgen",
  "web-sys",
  "wgpu-types",
- "winapi",
+ "windows",
+ "windows-core",
 ]
 
 [[package]]
 name = "wgpu-types"
 version = "22.0.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=c6a3d927345a81eeb13e9e3720002c4cc6f25e54#c6a3d927345a81eeb13e9e3720002c4cc6f25e54"
+source = "git+https://github.com/gfx-rs/wgpu?rev=bbdbafdf8a947b563b46f632a778632b906d9eb4#bbdbafdf8a947b563b46f632a778632b906d9eb4"
 dependencies = [
  "bitflags 2.6.0",
  "js-sys",
@@ -6875,7 +6872,6 @@ version = "0.1.0"
 dependencies = [
  "arrayvec",
  "bincode",
- "d3d12",
  "log",
  "nsstring",
  "parking_lot",
@@ -6884,7 +6880,7 @@ dependencies = [
  "wgpu-core",
  "wgpu-hal",
  "wgpu-types",
- "winapi",
+ "windows",
 ]
 
 [[package]]
@@ -7252,3 +7248,8 @@ dependencies = [
  "memchr",
  "thiserror",
 ]
+
+[[package]]
+name = "zlib-rs"
+version = "0.2.1"
+source = "git+https://github.com/memorysafety/zlib-rs?rev=4aa430ccb77537d0d60dab8db993ca51bb1194c5#4aa430ccb77537d0d60dab8db993ca51bb1194c5"

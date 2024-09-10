@@ -303,7 +303,7 @@ class OutputParser {
 
     let varData;
     let varFallbackValue;
-    let varSubsitutedValue;
+    let varSubstitutedValue;
     let varComputedValue;
 
     // Get the variable value if it is in use.
@@ -322,24 +322,17 @@ class OutputParser {
             // - or if there's no declaration in regular rule, to the registered property initial-value.
             varValue;
 
-      varSubsitutedValue = options.inStartingStyleRule
+      varSubstitutedValue = options.inStartingStyleRule
         ? varStartingStyleValue
         : varValue;
 
       varComputedValue = varData.computedValue;
     }
 
-    // Get the variable name.
-    const varName = text.substring(tokens[0].startOffset, tokens[0].endOffset);
-
-    if (typeof varSubsitutedValue === "string") {
-      // The variable value is valid, set the variable name's title of the first argument
-      // in var() to display the variable name and value.
-      firstOpts["data-variable"] = STYLE_INSPECTOR_L10N.getFormatStr(
-        "rule.variableValue",
-        varName,
-        varSubsitutedValue
-      );
+    if (typeof varSubstitutedValue === "string") {
+      // The variable value is valid, store the substituted value in a data attribute to
+      // be reused by the variable tooltip.
+      firstOpts["data-variable"] = varSubstitutedValue;
       firstOpts.class = options.matchedVariableClass;
       secondOpts.class = options.unmatchedClass;
 
@@ -348,7 +341,7 @@ class OutputParser {
       if (
         !options.inStartingStyleRule &&
         typeof varComputedValue === "string" &&
-        varComputedValue !== varSubsitutedValue
+        varComputedValue !== varSubstitutedValue
       ) {
         firstOpts["data-variable-computed"] = varComputedValue;
       }
@@ -358,12 +351,7 @@ class OutputParser {
         !options.inStartingStyleRule &&
         typeof varData.startingStyle === "string"
       ) {
-        firstOpts["data-starting-style-variable"] =
-          STYLE_INSPECTOR_L10N.getFormatStr(
-            "rule.variableValue",
-            varName,
-            varData.startingStyle
-          );
+        firstOpts["data-starting-style-variable"] = varData.startingStyle;
       }
 
       if (varData.registeredProperty) {
@@ -376,6 +364,12 @@ class OutputParser {
     } else {
       // The variable is not set and does not have an initial value, mark it unmatched.
       firstOpts.class = options.unmatchedClass;
+
+      // Get the variable name.
+      const varName = text.substring(
+        tokens[0].startOffset,
+        tokens[0].endOffset
+      );
       firstOpts["data-variable"] = STYLE_INSPECTOR_L10N.getFormatStr(
         "rule.variableUnset",
         varName
@@ -410,7 +404,7 @@ class OutputParser {
 
     return {
       node: variableNode,
-      value: varSubsitutedValue,
+      value: varSubstitutedValue,
       computedValue: varComputedValue,
       fallbackValue: varFallbackValue,
     };
@@ -755,6 +749,9 @@ class OutputParser {
           this.#stack.push({
             isParenthesis: true,
             separatorIndexes: [],
+            // The parsed parts of the function that will be rendered on screen.
+            // This can hold both simple strings and DOMNodes.
+            parts: [],
           });
           this.#appendTextNode(
             text.substring(token.startOffset, token.endOffset)
@@ -1163,7 +1160,7 @@ class OutputParser {
     let isXCoord = true;
     let fillRule = false;
     let coordNode = this.#createNode("span", {
-      class: "ruleview-shape-point",
+      class: "inspector-shape-point",
       "data-point": `${i}`,
     });
 
@@ -1175,7 +1172,7 @@ class OutputParser {
           const node = this.#createNode(
             "span",
             {
-              class: "ruleview-shape-point",
+              class: "inspector-shape-point",
               "data-point": `${i}`,
               "data-pair": isXCoord ? "x" : "y",
             },
@@ -1201,7 +1198,7 @@ class OutputParser {
         depth = 0;
         isXCoord = true;
         coordNode = this.#createNode("span", {
-          class: "ruleview-shape-point",
+          class: "inspector-shape-point",
           "data-point": `${i}`,
         });
       } else if (token.tokenType === "ParenthesisBlock") {
@@ -1221,7 +1218,7 @@ class OutputParser {
         const node = this.#createNode(
           "span",
           {
-            class: "ruleview-shape-point",
+            class: "inspector-shape-point",
             "data-point": `${i}`,
             "data-pair": isXCoord ? "x" : "y",
           },
@@ -1245,7 +1242,7 @@ class OutputParser {
           const node = this.#createNode(
             "span",
             {
-              class: "ruleview-shape-point",
+              class: "inspector-shape-point",
               "data-point": `${i}`,
               "data-pair": "x",
             },
@@ -1281,7 +1278,7 @@ class OutputParser {
       const node = this.#createNode(
         "span",
         {
-          class: "ruleview-shape-point",
+          class: "inspector-shape-point",
           "data-point": `${i}`,
           "data-pair": isXCoord ? "x" : "y",
         },
@@ -1311,7 +1308,7 @@ class OutputParser {
     let coord = "";
     let point = "radius";
     const centerNode = this.#createNode("span", {
-      class: "ruleview-shape-point",
+      class: "inspector-shape-point",
       "data-point": "center",
     });
     while (token) {
@@ -1336,7 +1333,7 @@ class OutputParser {
         const node = this.#createNode(
           "span",
           {
-            class: "ruleview-shape-point",
+            class: "inspector-shape-point",
             "data-point": "radius",
           },
           coord
@@ -1354,7 +1351,7 @@ class OutputParser {
         const node = this.#createNode(
           "span",
           {
-            class: "ruleview-shape-point",
+            class: "inspector-shape-point",
             "data-point": "center",
             "data-pair": point === "cx" ? "x" : "y",
           },
@@ -1374,7 +1371,7 @@ class OutputParser {
           const node = this.#createNode(
             "span",
             {
-              class: "ruleview-shape-point",
+              class: "inspector-shape-point",
               "data-point": "radius",
             },
             coord
@@ -1401,7 +1398,7 @@ class OutputParser {
           const node = this.#createNode(
             "span",
             {
-              class: "ruleview-shape-point",
+              class: "inspector-shape-point",
               "data-point": "center",
               "data-pair": "x",
             },
@@ -1428,7 +1425,7 @@ class OutputParser {
         const node = this.#createNode(
           "span",
           {
-            class: "ruleview-shape-point",
+            class: "inspector-shape-point",
             "data-point": "radius",
           },
           coord
@@ -1438,7 +1435,7 @@ class OutputParser {
         const node = this.#createNode(
           "span",
           {
-            class: "ruleview-shape-point",
+            class: "inspector-shape-point",
             "data-point": "center",
             "data-pair": point === "cx" ? "x" : "y",
           },
@@ -1472,7 +1469,7 @@ class OutputParser {
     let coord = "";
     let point = "rx";
     const centerNode = this.#createNode("span", {
-      class: "ruleview-shape-point",
+      class: "inspector-shape-point",
       "data-point": "center",
     });
     while (token) {
@@ -1494,7 +1491,7 @@ class OutputParser {
           const node = this.#createNode(
             "span",
             {
-              class: "ruleview-shape-point",
+              class: "inspector-shape-point",
               "data-point": point,
             },
             coord
@@ -1512,7 +1509,7 @@ class OutputParser {
           const node = this.#createNode(
             "span",
             {
-              class: "ruleview-shape-point",
+              class: "inspector-shape-point",
               "data-point": "center",
               "data-pair": point === "cx" ? "x" : "y",
             },
@@ -1533,7 +1530,7 @@ class OutputParser {
           const node = this.#createNode(
             "span",
             {
-              class: "ruleview-shape-point",
+              class: "inspector-shape-point",
               "data-point": "ry",
             },
             coord
@@ -1558,7 +1555,7 @@ class OutputParser {
           const node = this.#createNode(
             "span",
             {
-              class: "ruleview-shape-point",
+              class: "inspector-shape-point",
               "data-point": "rx",
             },
             coord
@@ -1572,7 +1569,7 @@ class OutputParser {
           const node = this.#createNode(
             "span",
             {
-              class: "ruleview-shape-point",
+              class: "inspector-shape-point",
               "data-point": "center",
               "data-pair": "x",
             },
@@ -1599,7 +1596,7 @@ class OutputParser {
         const node = this.#createNode(
           "span",
           {
-            class: "ruleview-shape-point",
+            class: "inspector-shape-point",
             "data-point": point,
           },
           coord
@@ -1609,7 +1606,7 @@ class OutputParser {
         const node = this.#createNode(
           "span",
           {
-            class: "ruleview-shape-point",
+            class: "inspector-shape-point",
             "data-point": "center",
             "data-pair": point === "cx" ? "x" : "y",
           },
@@ -1668,7 +1665,7 @@ class OutputParser {
         const node = this.#createNode(
           "span",
           {
-            class: "ruleview-shape-point",
+            class: "inspector-shape-point",
           },
           coord
         );
@@ -1688,7 +1685,7 @@ class OutputParser {
           const node = this.#createNode(
             "span",
             {
-              class: "ruleview-shape-point",
+              class: "inspector-shape-point",
             },
             coord
           );
@@ -1708,7 +1705,7 @@ class OutputParser {
           const node = this.#createNode(
             "span",
             {
-              class: "ruleview-shape-point",
+              class: "inspector-shape-point",
             },
             coord
           );
@@ -1733,7 +1730,7 @@ class OutputParser {
         const node = this.#createNode(
           "span",
           {
-            class: "ruleview-shape-point",
+            class: "inspector-shape-point",
           },
           coord
         );
@@ -1873,7 +1870,7 @@ class OutputParser {
 
         // Color swatches next to values trigger the color editor everywhere aside from
         // the Computed panel where values are read-only.
-        if (!options.colorSwatchClass.startsWith("computed-")) {
+        if (!options.colorSwatchReadOnly) {
           attributes = { ...attributes, tabindex: "0", role: "button" };
         }
 
@@ -1887,6 +1884,7 @@ class OutputParser {
         }
         swatch.addEventListener("mousedown", this.#onColorSwatchMouseDown);
         container.appendChild(swatch);
+        container.classList.add("color-swatch-container");
       }
 
       let colorUnit = options.defaultColorUnit;
@@ -2245,6 +2243,8 @@ class OutputParser {
    * @param {String} overrides.colorClass: The class to use for the color value that
    *        follows the swatch.
    * @param {String} overrides.colorSwatchClass: The class to use for color swatches.
+   * @param {Boolean} overrides.colorSwatchReadOnly: Whether the resulting color swatch
+   *        should be read-only or not. Defaults to false.
    * @param {Boolean} overrides.filterSwatch: A special case for parsing a "filter" property,
    *        causing the parser to skip the call to #wrapFilter. Used only for previewing
    *        with the filter swatch.
@@ -2279,6 +2279,7 @@ class OutputParser {
       bezierSwatchClass: null,
       colorClass: null,
       colorSwatchClass: null,
+      colorSwatchReadOnly: false,
       filterSwatch: false,
       flexClass: null,
       gridClass: null,

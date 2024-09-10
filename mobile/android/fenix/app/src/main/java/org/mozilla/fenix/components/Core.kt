@@ -104,6 +104,7 @@ import org.mozilla.fenix.components.feature.giveasyoulive.storage.DonationRemind
 import org.mozilla.fenix.components.search.SearchMigration
 import org.mozilla.fenix.downloads.DownloadService
 import org.mozilla.fenix.ext.components
+import org.mozilla.fenix.ext.isTablet
 import org.mozilla.fenix.ext.settings
 import org.mozilla.fenix.gecko.GeckoProvider
 import org.mozilla.fenix.historymetadata.DefaultHistoryMetadataService
@@ -181,7 +182,8 @@ class Core(
             cookieBannerHandlingGlobalRules = context.settings().shouldEnableCookieBannerGlobalRules,
             cookieBannerHandlingGlobalRulesSubFrames = context.settings().shouldEnableCookieBannerGlobalRulesSubFrame,
             emailTrackerBlockingPrivateBrowsing = true,
-            userAgentString = "Mozilla/5.0 (Android "+android.os.Build.VERSION.RELEASE + "; GAYL; Mobile; rv:131.0) Gecko/131.0 Firefox/131.0"
+            userCharacteristicPingCurrentVersion = FxNimbus.features.userCharacteristics.value().currentVersion,
+            userAgentString = "Mozilla/5.0 (Android "+android.os.Build.VERSION.RELEASE + "; GAYL; Mobile; rv:131.0) Gecko/131.0 Firefox/131.0",
         )
 
         GeckoEngine(
@@ -334,6 +336,7 @@ class Core(
                 search = SearchState(
                     applicationSearchEngines = applicationSearchEngines,
                 ),
+                desktopMode = context.isTablet(),
             ),
             middleware = middlewareList + EngineMiddleware.create(
                 engine,

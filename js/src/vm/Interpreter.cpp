@@ -1925,14 +1925,21 @@ bool js::AddDisposableResource(
 // 7.5.4 AddDisposableResource ( disposeCapability, V, hint [ , method ] )
 // https://arai-a.github.io/ecma262-compare/?pr=3000&id=sec-adddisposableresource
 // Step 3
-bool js::AddDisposableResourceToCapability(
-    JSContext* cx, JS::Handle<ArrayObject*> disposeCapability,
-    JS::Handle<JS::Value> val, JS::Handle<JS::Value> method,
-    JS::Handle<JS::Value> needsClosure, UsingHint hint) {
+bool js::AddDisposableResourceToCapability(JSContext* cx,
+                                           JS::Handle<JSObject*> env,
+                                           JS::Handle<JS::Value> val,
+                                           JS::Handle<JS::Value> method,
+                                           bool needsClosure, UsingHint hint) {
+  JS::Rooted<ArrayObject*> disposeCapability(
+      cx,
+      env->as<DisposableEnvironmentObject>().getOrCreateDisposeCapability(cx));
+  if (!disposeCapability) {
+    return false;
+  }
+
   JS::Rooted<JS::Value> disposeMethod(cx);
 
-  bool needsClosureBool = needsClosure.toBoolean();
-  if (needsClosureBool) {
+  if (needsClosure) {
     JS::Handle<PropertyName*> funName = cx->names().empty_;
     JSFunction* asyncWrapper =
         NewNativeFunction(cx, SyncDisposalClosure, 0, funName,
@@ -2124,14 +2131,20 @@ bool MOZ_NEVER_INLINE JS_HAZ_JSNATIVE_CALLER js::Interpret(JSContext* cx,
    * correctness pitfalls due to incorrect compilation of destructor calls
    * around computed gotos.
    */
-  RootedValue rootValue0(cx), rootValue1(cx);
-  RootedObject rootObject0(cx), rootObject1(cx);
-  RootedFunction rootFunction0(cx);
-  Rooted<JSAtom*> rootAtom0(cx);
-  Rooted<PropertyName*> rootName0(cx);
-  RootedId rootId0(cx);
-  RootedScript rootScript0(cx);
-  Rooted<Scope*> rootScope0(cx);
+  RootedTuple<Value, Value, JSObject*, JSObject*, JSFunction*, JSAtom*,
+              PropertyName*, PropertyKey, JSScript*, Scope*>
+      roots(cx);
+  RootedField<Value, 0> rootValue0(roots);
+  RootedField<Value, 1> rootValue1(roots);
+  RootedField<JSObject*, 2> rootObject0(roots);
+  RootedField<JSObject*, 3> rootObject1(roots);
+  RootedField<JSFunction*> rootFunction0(roots);
+  RootedField<JSAtom*> rootAtom0(roots);
+  RootedField<PropertyName*> rootName0(roots);
+  RootedField<PropertyKey> rootId0(roots);
+  RootedField<JSScript*> rootScript0(roots);
+  RootedField<Scope*> rootScope0(roots);
+
   DebugOnly<uint32_t> blockDepth;
 
   /* State communicated between non-local jumps: */
@@ -2319,25 +2332,9 @@ bool MOZ_NEVER_INLINE JS_HAZ_JSNATIVE_CALLER js::Interpret(JSContext* cx,
       POP_COPY_TO(val);
 
       UsingHint hint = UsingHint(GET_UINT8(REGS.pc));
-      JS::Rooted<ArrayObject*> disposableCapability(cx);
 
-      if (env->is<LexicalEnvironmentObject>()) {
-        disposableCapability =
-            env->as<LexicalEnvironmentObject>().getOrCreateDisposeCapability(
-                cx);
-      } else if (env->is<ModuleEnvironmentObject>()) {
-        disposableCapability =
-            env->as<ModuleEnvironmentObject>().getOrCreateDisposeCapability(cx);
-      } else {
-        MOZ_CRASH("Unexpected environment object for JSOp::AddDispose");
-      }
-
-      if (!disposableCapability) {
-        goto error;
-      }
-
-      if (!AddDisposableResourceToCapability(cx, disposableCapability, val,
-                                             method, needsClosure, hint)) {
+      if (!AddDisposableResourceToCapability(cx, env, val, method,
+                                             needsClosure.toBoolean(), hint)) {
         goto error;
       }
     }
@@ -2347,9 +2344,7 @@ bool MOZ_NEVER_INLINE JS_HAZ_JSNATIVE_CALLER js::Interpret(JSContext* cx,
       ReservedRooted<JSObject*> env(&rootObject0,
                                     REGS.fp()->environmentChain());
       JS::Value maybeDisposables =
-          env->is<LexicalEnvironmentObject>()
-              ? env->as<LexicalEnvironmentObject>().getDisposables()
-              : env->as<ModuleEnvironmentObject>().getDisposables();
+          env->as<DisposableEnvironmentObject>().getDisposables();
 
       MOZ_ASSERT(maybeDisposables.isObject() || maybeDisposables.isUndefined());
 
@@ -2357,11 +2352,7 @@ bool MOZ_NEVER_INLINE JS_HAZ_JSNATIVE_CALLER js::Interpret(JSContext* cx,
         PUSH_UNDEFINED();
       } else {
         PUSH_OBJECT(maybeDisposables.toObject());
-        if (env->is<LexicalEnvironmentObject>()) {
-          env->as<LexicalEnvironmentObject>().clearDisposables();
-        } else {
-          env->as<ModuleEnvironmentObject>().clearDisposables();
-        }
+        env->as<DisposableEnvironmentObject>().clearDisposables();
       }
     }
     END_CASE(TakeDisposeCapability)
@@ -3388,7 +3379,7 @@ bool MOZ_NEVER_INLINE JS_HAZ_JSNATIVE_CALLER js::Interpret(JSContext* cx,
       HandleValue arr = REGS.stackHandleAt(-1 - construct);
       MutableHandleValue ret = REGS.stackHandleAt(-3 - construct);
 
-      RootedValue& newTarget = rootValue0;
+      ReservedRooted<Value> newTarget(&rootValue0);
       if (construct) {
         newTarget = REGS.sp[-1];
       } else {
@@ -5164,12 +5155,14 @@ bool js::DeleteNameOperation(JSContext* cx, Handle<PropertyName*> name,
   bool status = result.ok();
   res.setBoolean(status);
 
+#ifndef NIGHTLY_BUILD
   if (status) {
     // Deleting a name from the global object removes it from [[VarNames]].
     if (pobj == scope && scope->is<GlobalObject>()) {
       scope->as<GlobalObject>().removeFromVarNames(name);
     }
   }
+#endif
 
   return true;
 }

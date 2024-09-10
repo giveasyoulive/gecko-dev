@@ -73,6 +73,21 @@
           "prefersContrast": "{text.color.@base}"
         }
       },
+      "deemphasized": {
+        "@base": {
+          "value": {
+            "brand": {
+              "light": "{color.gray.30}",
+              "dark": "{color.gray.70}"
+            },
+            "platform": {
+              "default": "color-mix(in srgb, currentColor 24%, transparent)"
+            },
+            "prefersContrast": "currentColor",
+            "forcedColors": "ButtonText"
+          }
+        }
+      },
       "interactive": {
         "@base": {
           "value": {
@@ -140,7 +155,7 @@
               "default": "color-mix(in srgb, currentColor 7%, transparent)"
             },
             "platform": {
-              "default": "var(--button-bgcolor)"
+              "default": "var(--button-bgcolor, color-mix(in srgb, currentColor 13%, transparent))"
             }
           }
         },
@@ -151,7 +166,7 @@
               "default": "color-mix(in srgb, currentColor 14%, transparent)"
             },
             "platform": {
-              "default": "var(--button-hover-bgcolor)"
+              "default": "var(--button-hover-bgcolor, color-mix(in srgb, currentColor 17%, transparent))"
             }
           }
         },
@@ -162,7 +177,7 @@
               "default": "color-mix(in srgb, currentColor 21%, transparent)"
             },
             "platform": {
-              "default": "var(--button-active-bgcolor)"
+              "default": "var(--button-active-bgcolor, color-mix(in srgb, currentColor 30%, transparent))"
             }
           }
         },
@@ -557,6 +572,9 @@
     "gray": {
       "05": {
         "value": "#fbfbfe"
+      },
+      "30": {
+        "value": "#bac2ca"
       },
       "50": {
         "value": "#bfbfc9"

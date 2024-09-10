@@ -81,7 +81,6 @@ function fakeIdleNotification(topic) {
 }
 
 function setupTestData() {
-  Services.startup.interrupted = true;
   let h2 = Telemetry.getHistogramById("TELEMETRY_TEST_COUNT");
   h2.add();
 
@@ -332,7 +331,6 @@ function checkPayload(payload, reason, successfulPings) {
   checkPayloadInfo(payload.info, reason);
 
   Assert.ok(payload.simpleMeasurements.totalTime >= 0);
-  Assert.equal(payload.simpleMeasurements.startupInterrupted, 1);
   Assert.equal(payload.simpleMeasurements.shutdownDuration, SHUTDOWN_TIME);
 
   let activeTicks = payload.simpleMeasurements.activeTicks;
@@ -1288,6 +1286,7 @@ add_task(async function test_sendShutdownPing() {
   await TelemetryController.testShutdown();
   // After re-enabling FHR, wait for the new client ID
   gClientID = await ClientID.getClientID();
+  gProfileGroupID = await ClientID.getProfileGroupID();
 
   // Check that the "shutdown" ping was correctly saved to disk.
   await checkPendingShutdownPing();

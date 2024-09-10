@@ -61,7 +61,7 @@ static constexpr size_t NurseryChunkUsableSize =
 struct NurseryChunk : public ChunkBase {
   alignas(CellAlignBytes) uint8_t data[NurseryChunkUsableSize];
 
-  static NurseryChunk* fromChunk(TenuredChunk* chunk, ChunkKind kind,
+  static NurseryChunk* fromChunk(ArenaChunk* chunk, ChunkKind kind,
                                  uint8_t index);
 
   explicit NurseryChunk(JSRuntime* runtime, ChunkKind kind, uint8_t chunkIndex)
@@ -166,7 +166,7 @@ inline bool js::NurseryChunk::markPagesInUseHard(size_t endOffset) {
 }
 
 // static
-inline js::NurseryChunk* js::NurseryChunk::fromChunk(TenuredChunk* chunk,
+inline js::NurseryChunk* js::NurseryChunk::fromChunk(ArenaChunk* chunk,
                                                      ChunkKind kind,
                                                      uint8_t index) {
   return new (chunk) NurseryChunk(chunk->runtime, kind, index);
@@ -210,8 +210,8 @@ void js::NurseryDecommitTask::run(AutoLockHelperThreadState& lock) {
     NurseryChunk* nurseryChunk = chunksToDecommit().popCopy();
     AutoUnlockHelperThreadState unlock(lock);
     nurseryChunk->~NurseryChunk();
-    TenuredChunk* tenuredChunk = TenuredChunk::emplace(
-        nurseryChunk, gc, /* allMemoryCommitted = */ false);
+    ArenaChunk* tenuredChunk =
+        ArenaChunk::emplace(nurseryChunk, gc, /* allMemoryCommitted = */ false);
     AutoLockGC lock(gc);
     gc->recycleChunk(tenuredChunk, lock);
   }
@@ -1764,11 +1764,7 @@ bool js::Nursery::registerMallocedBuffer(void* buffer, size_t nbytes) {
     return false;
   }
 
-  toSpace.mallocedBufferBytes += nbytes;
-  if (MOZ_UNLIKELY(toSpace.mallocedBufferBytes > capacity() * 8)) {
-    requestMinorGC(JS::GCReason::NURSERY_MALLOC_BUFFERS);
-  }
-
+  addMallocedBufferBytes(nbytes);
   return true;
 }
 
@@ -1911,6 +1907,69 @@ size_t Nursery::sizeOfMallocedBuffers(
   return total;
 }
 
+void js::Nursery::sweepStringsWithBuffer() {
+  // Add StringBuffers to stringBuffersToReleaseAfterMinorGC_. Strings we
+  // tenured must have an additional refcount at this point.
+
+  MOZ_ASSERT(stringBuffersToReleaseAfterMinorGC_.empty());
+
+  auto sweep = [&](JSLinearString* str,
+                   mozilla::StringBuffer* buffer) -> JSLinearString* {
+    MOZ_ASSERT(inCollectedRegion(str));
+
+    if (!IsForwarded(str)) {
+      MOZ_ASSERT(str->hasStringBuffer() || str->isAtomRef());
+      MOZ_ASSERT_IF(str->hasStringBuffer(), str->stringBuffer() == buffer);
+      if (!stringBuffersToReleaseAfterMinorGC_.append(buffer)) {
+        // Release on the main thread on OOM.
+        buffer->Release();
+      }
+      return nullptr;
+    }
+
+    JSLinearString* dst = Forwarded(str);
+    if (!IsInsideNursery(dst)) {
+      MOZ_ASSERT_IF(dst->hasStringBuffer() && dst->stringBuffer() == buffer,
+                    buffer->RefCount() > 1);
+      if (!stringBuffersToReleaseAfterMinorGC_.append(buffer)) {
+        // Release on the main thread on OOM.
+        buffer->Release();
+      }
+      return nullptr;
+    }
+
+    return dst;
+  };
+
+  stringBuffers_.mutableEraseIf([&](StringAndBuffer& entry) {
+    if (JSLinearString* dst = sweep(entry.first, entry.second)) {
+      entry.first = dst;
+      // See comment in Nursery::addStringBuffer.
+      if (!entry.second->HasMultipleReferences()) {
+        addMallocedBufferBytes(entry.second->AllocationSize());
+      }
+      return false;
+    }
+    return true;
+  });
+
+  AutoEnterOOMUnsafeRegion oomUnsafe;
+
+  ExtensibleStringBuffers buffers(std::move(extensibleStringBuffers_));
+  MOZ_ASSERT(extensibleStringBuffers_.empty());
+
+  for (ExtensibleStringBuffers::Enum e(buffers); !e.empty(); e.popFront()) {
+    if (JSLinearString* dst = sweep(e.front().key(), e.front().value())) {
+      if (!extensibleStringBuffers_.putNew(dst, e.front().value())) {
+        oomUnsafe.crash("sweepStringsWithBuffer");
+      }
+      // Ensure mallocedBufferBytes includes the buffer size for
+      // removeExtensibleStringBuffer.
+      addMallocedBufferBytes(e.front().value()->AllocationSize());
+    }
+  }
+}
+
 void js::Nursery::sweep() {
   // It's important that the context's GCUse is not Finalizing at this point,
   // otherwise we will miscount memory attached to nursery objects with
@@ -1939,37 +1998,7 @@ void js::Nursery::sweep() {
     return false;
   });
 
-  // Add StringBuffers to stringBuffersToReleaseAfterMinorGC_. Strings we
-  // tenured must have an additional refcount at this point.
-  MOZ_ASSERT(stringBuffersToReleaseAfterMinorGC_.empty());
-  stringBuffers_.mutableEraseIf([&](StringAndBuffer& entry) {
-    auto [str, buffer] = entry;
-    MOZ_ASSERT(inCollectedRegion(str));
-
-    if (!IsForwarded(str)) {
-      MOZ_ASSERT(str->hasStringBuffer() || str->isAtomRef());
-      MOZ_ASSERT_IF(str->hasStringBuffer(), str->stringBuffer() == buffer);
-      if (!stringBuffersToReleaseAfterMinorGC_.append(buffer)) {
-        // Release on the main thread on OOM.
-        buffer->Release();
-      }
-      return true;
-    }
-
-    JSLinearString* dst = Forwarded(str);
-    if (!IsInsideNursery(dst)) {
-      MOZ_ASSERT_IF(dst->hasStringBuffer() && dst->stringBuffer() == buffer,
-                    buffer->RefCount() > 1);
-      if (!stringBuffersToReleaseAfterMinorGC_.append(buffer)) {
-        // Release on the main thread on OOM.
-        buffer->Release();
-      }
-      return true;
-    }
-
-    entry.first = dst;
-    return false;
-  });
+  sweepStringsWithBuffer();
 
   for (ZonesIter zone(runtime(), SkipAtoms); !zone.done(); zone.next()) {
     zone->sweepAfterMinorGC(&trc);
@@ -2084,12 +2113,12 @@ bool js::Nursery::allocateNextChunk(AutoLockGCBgAlloc& lock) {
     return false;
   }
 
-  TenuredChunk* toSpaceChunk = gc->getOrAllocChunk(lock);
+  ArenaChunk* toSpaceChunk = gc->getOrAllocChunk(lock);
   if (!toSpaceChunk) {
     return false;
   }
 
-  TenuredChunk* fromSpaceChunk = nullptr;
+  ArenaChunk* fromSpaceChunk = nullptr;
   if (semispaceEnabled_ && !(fromSpaceChunk = gc->getOrAllocChunk(lock))) {
     gc->recycleChunk(toSpaceChunk, lock);
     return false;

@@ -609,7 +609,7 @@ void nsIFrame::Init(nsIContent* aContent, nsContainerFrame* aParent,
 
   mContent = aContent;
   mParent = aParent;
-  MOZ_DIAGNOSTIC_ASSERT(!mParent || PresShell() == mParent->PresShell());
+  MOZ_ASSERT(!mParent || PresShell() == mParent->PresShell());
 
   if (aPrevInFlow) {
     mWritingMode = aPrevInFlow->GetWritingMode();
@@ -1693,10 +1693,10 @@ nsRect nsIFrame::GetMarginRectRelativeToSelf() const {
 bool nsIFrame::IsTransformed() const {
   if (!HasAnyStateBits(NS_FRAME_MAY_BE_TRANSFORMED)) {
     MOZ_ASSERT(!IsCSSTransformed());
-    MOZ_ASSERT(!IsSVGTransformed());
+    MOZ_ASSERT(!GetParentSVGTransforms());
     return false;
   }
-  return IsCSSTransformed() || IsSVGTransformed();
+  return IsCSSTransformed() || GetParentSVGTransforms();
 }
 
 bool nsIFrame::IsCSSTransformed() const {
@@ -1741,10 +1741,7 @@ bool nsIFrame::HasOpacityInternal(float aThreshold,
   return HasAnimationOfOpacity(aEffectSet);
 }
 
-bool nsIFrame::IsSVGTransformed(gfx::Matrix* aOwnTransforms,
-                                gfx::Matrix* aFromParentTransforms) const {
-  return false;
-}
+bool nsIFrame::DoGetParentSVGTransforms(gfx::Matrix*) const { return false; }
 
 bool nsIFrame::Extend3DContext(const nsStyleDisplay* aStyleDisplay,
                                const nsStyleEffects* aStyleEffects,
@@ -5416,6 +5413,7 @@ static FrameContentRange GetRangeForFrame(const nsIFrame* aFrame) {
     content = content->GetParent();
   }
 
+  MOZ_ASSERT(!content->IsBeingRemoved());
   nsIContent* parent = content->GetParent();
   if (aFrame->IsBlockOutside() || !parent) {
     return FrameContentRange(content, 0, content->GetChildCount());
@@ -5424,9 +5422,10 @@ static FrameContentRange GetRangeForFrame(const nsIFrame* aFrame) {
   // TODO(emilio): Revise this in presence of Shadow DOM / display: contents,
   // it's likely that we don't want to just walk the light tree, and we need to
   // change the representation of FrameContentRange.
-  const int32_t index = parent->ComputeIndexOf_Deprecated(content);
-  MOZ_ASSERT(index >= 0);
-  return FrameContentRange(parent, index, index + 1);
+  Maybe<uint32_t> index = parent->ComputeIndexOf(content);
+  MOZ_ASSERT(index.isSome());
+  return FrameContentRange(parent, static_cast<int32_t>(*index),
+                           static_cast<int32_t>(*index + 1));
 }
 
 // The FrameTarget represents the closest frame to a point that can be selected
@@ -6014,18 +6013,20 @@ void nsIFrame::MarkSubtreeDirty() {
 }
 
 /* virtual */
-void nsIFrame::AddInlineMinISize(gfxContext* aRenderingContext,
+void nsIFrame::AddInlineMinISize(const IntrinsicSizeInput& aInput,
                                  InlineMinISizeData* aData) {
   nscoord isize = nsLayoutUtils::IntrinsicForContainer(
-      aRenderingContext, this, IntrinsicISizeType::MinISize);
+      aInput.mContext, this, IntrinsicISizeType::MinISize,
+      aInput.mPercentageBasis);
   aData->DefaultAddInlineMinISize(this, isize);
 }
 
 /* virtual */
-void nsIFrame::AddInlinePrefISize(gfxContext* aRenderingContext,
+void nsIFrame::AddInlinePrefISize(const IntrinsicSizeInput& aInput,
                                   nsIFrame::InlinePrefISizeData* aData) {
   nscoord isize = nsLayoutUtils::IntrinsicForContainer(
-      aRenderingContext, this, IntrinsicISizeType::PrefISize);
+      aInput.mContext, this, IntrinsicISizeType::PrefISize,
+      aInput.mPercentageBasis);
   aData->DefaultAddInlinePrefISize(isize);
 }
 
@@ -6493,8 +6494,8 @@ nsIFrame::SizeComputationResult nsIFrame::ComputeSize(
                              aWM, aCBSize, boxSizingAdjust,
                              maxBSizeCoord.AsLengthPercentage(), aspectRatio);
 
-    result.ISize(aWM) = NS_CSS_MINMAX(result.ISize(aWM), transferredMinISize,
-                                      transferredMaxISize);
+    result.ISize(aWM) =
+        CSSMinMax(result.ISize(aWM), transferredMinISize, transferredMaxISize);
   }
 
   // Flex items ignore their min & max sizing properties in their
@@ -6516,6 +6517,7 @@ nsIFrame::SizeComputationResult nsIFrame::ComputeSize(
     result.ISize(aWM) = std::min(maxISize, result.ISize(aWM));
   }
 
+  const IntrinsicSizeInput input(aRenderingContext, Nothing());
   const auto& minISizeCoord = stylePos->MinISize(aWM);
   nscoord minISize;
   if (!minISizeCoord.IsAuto() && !shouldIgnoreMinMaxISize) {
@@ -6527,7 +6529,7 @@ nsIFrame::SizeComputationResult nsIFrame::ComputeSize(
                  aFlags.contains(ComputeSizeFlag::IApplyAutoMinSize))) {
     // This implements "Implied Minimum Size of Grid Items".
     // https://drafts.csswg.org/css-grid/#min-size-auto
-    minISize = std::min(maxISize, GetMinISize(aRenderingContext));
+    minISize = std::min(maxISize, GetMinISize(input));
     if (styleISize.IsLengthPercentage()) {
       minISize = std::min(minISize, result.ISize(aWM));
     } else if (aFlags.contains(ComputeSizeFlag::IClampMarginBoxMinSize)) {
@@ -6550,7 +6552,7 @@ nsIFrame::SizeComputationResult nsIFrame::ComputeSize(
                "aspect-ratio minimums should not apply to replaced elements");
     // The inline size computed by aspect-ratio shouldn't less than the
     // min-content size, which should be capped by its maximum inline size.
-    minISize = std::min(GetMinISize(aRenderingContext), maxISize);
+    minISize = std::min(GetMinISize(input), maxISize);
   } else {
     // Treat "min-width: auto" as 0.
     // NOTE: Technically, "auto" is supposed to behave like "min-content" on
@@ -6684,6 +6686,31 @@ nsIFrame::SizeComputationResult nsIFrame::ComputeSize(
   return {result, aspectRatioUsage};
 }
 
+nscoord nsIFrame::ComputeBSizeValueAsPercentageBasis(
+    const StyleSize& aStyleBSize, const StyleSize& aStyleMinBSize,
+    const StyleMaxSize& aStyleMaxBSize, nscoord aCBBSize,
+    nscoord aContentEdgeToBoxSizingBSize) {
+  const nscoord bSize = nsLayoutUtils::IsAutoBSize(aStyleBSize, aCBBSize)
+                            ? NS_UNCONSTRAINEDSIZE
+                            : nsLayoutUtils::ComputeBSizeValue(
+                                  aCBBSize, aContentEdgeToBoxSizingBSize,
+                                  aStyleBSize.AsLengthPercentage());
+
+  const nscoord minBSize = nsLayoutUtils::IsAutoBSize(aStyleMinBSize, aCBBSize)
+                               ? 0
+                               : nsLayoutUtils::ComputeBSizeValue(
+                                     aCBBSize, aContentEdgeToBoxSizingBSize,
+                                     aStyleMinBSize.AsLengthPercentage());
+
+  const nscoord maxBSize = nsLayoutUtils::IsAutoBSize(aStyleMaxBSize, aCBBSize)
+                               ? NS_UNCONSTRAINEDSIZE
+                               : nsLayoutUtils::ComputeBSizeValue(
+                                     aCBBSize, aContentEdgeToBoxSizingBSize,
+                                     aStyleMaxBSize.AsLengthPercentage());
+
+  return CSSMinMax(bSize, minBSize, maxBSize);
+}
+
 nsRect nsIFrame::ComputeTightBounds(DrawTarget* aDrawTarget) const {
   return InkOverflowRect();
 }
@@ -6711,12 +6738,25 @@ LogicalSize nsIFrame::ComputeAutoSize(
   if (styleISize.IsAuto()) {
     nscoord availBased =
         aAvailableISize - aMargin.ISize(aWM) - aBorderPadding.ISize(aWM);
-    result.ISize(aWM) = ShrinkISizeToFit(aRenderingContext, availBased, aFlags);
+    const auto* stylePos = StylePosition();
+    const auto& styleBSize = aSizeOverrides.mStyleBSize
+                                 ? *aSizeOverrides.mStyleBSize
+                                 : stylePos->BSize(aWM);
+    const LogicalSize contentEdgeToBoxSizing =
+        stylePos->mBoxSizing == StyleBoxSizing::Border ? aBorderPadding
+                                                       : LogicalSize(aWM);
+    const nscoord bSize = ComputeBSizeValueAsPercentageBasis(
+        styleBSize, stylePos->MinBSize(aWM), stylePos->MaxBSize(aWM),
+        aCBSize.BSize(aWM), contentEdgeToBoxSizing.BSize(aWM));
+    const IntrinsicSizeInput input(
+        aRenderingContext, Some(LogicalSize(aWM, NS_UNCONSTRAINEDSIZE, bSize)
+                                    .ConvertTo(GetWritingMode(), aWM)));
+    result.ISize(aWM) = ShrinkISizeToFit(input, availBased, aFlags);
   }
   return result;
 }
 
-nscoord nsIFrame::ShrinkISizeToFit(gfxContext* aRenderingContext,
+nscoord nsIFrame::ShrinkISizeToFit(const IntrinsicSizeInput& aInput,
                                    nscoord aISizeInCB,
                                    ComputeSizeFlags aFlags) {
   // If we're a container for font size inflation, then shrink
@@ -6724,12 +6764,12 @@ nscoord nsIFrame::ShrinkISizeToFit(gfxContext* aRenderingContext,
   AutoMaybeDisableFontInflation an(this);
 
   nscoord result;
-  nscoord minISize = GetMinISize(aRenderingContext);
+  nscoord minISize = GetMinISize(aInput);
   if (minISize > aISizeInCB) {
     const bool clamp = aFlags.contains(ComputeSizeFlag::IClampMarginBoxMinSize);
     result = MOZ_UNLIKELY(clamp) ? aISizeInCB : minISize;
   } else {
-    nscoord prefISize = GetPrefISize(aRenderingContext);
+    nscoord prefISize = GetPrefISize(aInput);
     if (prefISize > aISizeInCB) {
       result = aISizeInCB;
     } else {
@@ -6739,20 +6779,20 @@ nscoord nsIFrame::ShrinkISizeToFit(gfxContext* aRenderingContext,
   return result;
 }
 
-nscoord nsIFrame::IntrinsicISizeFromInline(gfxContext* aContext,
+nscoord nsIFrame::IntrinsicISizeFromInline(const IntrinsicSizeInput& aInput,
                                            IntrinsicISizeType aType) {
   MOZ_ASSERT(!IsContainerForFontSizeInflation(),
              "Should not be a container for font size inflation!");
 
   if (aType == IntrinsicISizeType::MinISize) {
     InlineMinISizeData data;
-    AddInlineMinISize(aContext, &data);
+    AddInlineMinISize(aInput, &data);
     data.ForceBreak();
     return data.mPrevLines;
   }
 
   InlinePrefISizeData data;
-  AddInlinePrefISize(aContext, &data);
+  AddInlinePrefISize(aInput, &data);
   data.ForceBreak();
   return data.mPrevLines;
 }
@@ -6801,17 +6841,24 @@ nsIFrame::ISizeComputationResult nsIFrame::ComputeISizeValue(
         aAspectRatio));
   }();
 
+  const auto* stylePos = StylePosition();
+  const nscoord bSize = ComputeBSizeValueAsPercentageBasis(
+      aStyleBSize, stylePos->MinBSize(aWM), stylePos->MaxBSize(aWM),
+      aCBSize.BSize(aWM), aContentEdgeToBoxSizing.BSize(aWM));
+  const IntrinsicSizeInput input(
+      aRenderingContext, Some(LogicalSize(aWM, NS_UNCONSTRAINEDSIZE, bSize)
+                                  .ConvertTo(GetWritingMode(), aWM)));
   nscoord result;
   switch (aSize) {
     case ExtremumLength::MaxContent:
-      result = iSizeFromAspectRatio ? *iSizeFromAspectRatio
-                                    : GetPrefISize(aRenderingContext);
+      result =
+          iSizeFromAspectRatio ? *iSizeFromAspectRatio : GetPrefISize(input);
       NS_ASSERTION(result >= 0, "inline-size less than zero");
       return {result, iSizeFromAspectRatio ? AspectRatioUsage::ToComputeISize
                                            : AspectRatioUsage::None};
     case ExtremumLength::MinContent:
-      result = iSizeFromAspectRatio ? *iSizeFromAspectRatio
-                                    : GetMinISize(aRenderingContext);
+      result =
+          iSizeFromAspectRatio ? *iSizeFromAspectRatio : GetMinISize(input);
       NS_ASSERTION(result >= 0, "inline-size less than zero");
       if (MOZ_UNLIKELY(
               aFlags.contains(ComputeSizeFlag::IClampMarginBoxMinSize))) {
@@ -6828,8 +6875,8 @@ nsIFrame::ISizeComputationResult nsIFrame::ComputeISizeValue(
         // size computed from the block size and the aspect ratio.
         pref = min = *iSizeFromAspectRatio;
       } else {
-        pref = GetPrefISize(aRenderingContext);
-        min = GetMinISize(aRenderingContext);
+        pref = GetPrefISize(input);
+        min = GetMinISize(input);
       }
 
       const nscoord fill = aAvailableISizeOverride ? *aAvailableISizeOverride
@@ -11096,7 +11143,7 @@ void nsIFrame::SetParent(nsContainerFrame* aParent) {
 
   // Note that the current mParent may already be destroyed at this point.
   mParent = aParent;
-  MOZ_DIAGNOSTIC_ASSERT(!mParent || PresShell() == mParent->PresShell());
+  MOZ_ASSERT(!mParent || PresShell() == mParent->PresShell());
 
   if (HasAnyStateBits(NS_FRAME_HAS_VIEW | NS_FRAME_HAS_CHILD_WITH_VIEW)) {
     for (nsIFrame* f = aParent;

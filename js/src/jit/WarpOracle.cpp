@@ -548,6 +548,7 @@ AbortReasonOr<WarpScriptSnapshot*> WarpScriptOracle::createScriptSnapshot() {
       case JSOp::StrictEq:
       case JSOp::StrictNe:
       case JSOp::BindName:
+      case JSOp::GetBoundName:
       case JSOp::Add:
       case JSOp::Sub:
       case JSOp::Mul:
@@ -718,6 +719,11 @@ AbortReasonOr<WarpScriptSnapshot*> WarpScriptOracle::createScriptSnapshot() {
       case JSOp::Try:
       case JSOp::Finally:
       case JSOp::NewPrivateName:
+#ifdef ENABLE_EXPLICIT_RESOURCE_MANAGEMENT
+      case JSOp::AddDisposable:
+      case JSOp::TakeDisposeCapability:
+      case JSOp::CreateSuppressedError:
+#endif
         // Supported by WarpBuilder. Nothing to do.
         break;
 
@@ -1095,7 +1101,13 @@ AbortReasonOr<bool> WarpScriptOracle::maybeInlineCall(
       case AbortReason::Disable: {
         // If the target script can't be warp-compiled, mark it as
         // uninlineable, clean up, and fall through to the non-inlined path.
+
+        // If we monomorphically inline mutually recursive functions,
+        // we can reach this point more than once for the same stub.
+        // We should only unlink the stub once.
         ICEntry* entry = icScript_->icEntryForStub(fallbackStub);
+        MOZ_ASSERT_IF(entry->firstStub() != stub,
+                      !isTrialInlined && entry->firstStub() == stub->next());
         if (entry->firstStub() == stub) {
           fallbackStub->unlinkStub(cx_->zone(), entry, /*prev=*/nullptr, stub);
         }

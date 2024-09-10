@@ -15,6 +15,7 @@ ChromeUtils.defineESModuleGetters(lazy, {
     "chrome://remote/content/shared/NetworkDecodedBodySizeMap.sys.mjs",
   error: "chrome://remote/content/shared/webdriver/Errors.sys.mjs",
   generateUUID: "chrome://remote/content/shared/UUID.sys.mjs",
+  Log: "chrome://remote/content/shared/Log.sys.mjs",
   matchURLPattern:
     "chrome://remote/content/shared/webdriver/URLPattern.sys.mjs",
   NetworkListener:
@@ -29,6 +30,10 @@ ChromeUtils.defineESModuleGetters(lazy, {
   updateCacheBehavior:
     "chrome://remote/content/shared/NetworkCacheManager.sys.mjs",
 });
+
+ChromeUtils.defineLazyGetter(lazy, "logger", () =>
+  lazy.Log.get(lazy.Log.TYPES.WEBDRIVER_BIDI)
+);
 
 /**
  * @typedef {object} AuthChallenge
@@ -296,6 +301,15 @@ const SameSite = {
  */
 /* eslint-enable jsdoc/valid-types */
 
+// @see https://searchfox.org/mozilla-central/rev/527d691a542ccc0f333e36689bd665cb000360b2/netwerk/protocol/http/HttpBaseChannel.cpp#2083-2088
+const IMMUTABLE_RESPONSE_HEADERS = [
+  "content-encoding",
+  "content-length",
+  "content-type",
+  "trailer",
+  "transfer-encoding",
+];
+
 class NetworkModule extends RootBiDiModule {
   #beforeStopRequestListener;
   #blockedRequests;
@@ -562,7 +576,7 @@ class NetworkModule extends RootBiDiModule {
 
     if (headers !== null) {
       // Delete all existing request headers.
-      request.getHeadersList().forEach(([name]) => {
+      request.headers.forEach(([name]) => {
         request.clearRequestHeader(name);
       });
 
@@ -582,8 +596,7 @@ class NetworkModule extends RootBiDiModule {
       }
 
       let foundCookieHeader = false;
-      const requestHeaders = request.getHeadersList();
-      for (const [name] of requestHeaders) {
+      for (const [name] of request.headers) {
         if (name.toLowerCase() == "cookie") {
           // If there is already a cookie header, use merge: false to override
           // the value.
@@ -657,31 +670,27 @@ class NetworkModule extends RootBiDiModule {
       for (const cookie of cookies) {
         this.#assertSetCookieHeader(cookie);
       }
-
-      throw new lazy.error.UnsupportedOperationError(
-        `"cookies" not supported yet in network.continueResponse`
-      );
     }
 
     if (credentials !== null) {
       this.#assertAuthCredentials(credentials);
     }
 
+    let deserializedHeaders = [];
     if (headers !== null) {
-      lazy.assert.array(
-        headers,
-        `Expected "headers" to be an array got ${headers}`
-      );
-
-      for (const header of headers) {
-        this.#assertHeader(
-          header,
-          `Expected values in "headers" to be network.Header, got ${header}`
-        );
-      }
-
-      throw new lazy.error.UnsupportedOperationError(
-        `"headers" not supported yet in network.continueResponse`
+      // For existing responses, are unable to update some response headers,
+      // so we skip them for the time being and log a warning.
+      // Bug 1914351 should remove this limitation.
+      deserializedHeaders = this.#deserializeHeaders(headers).filter(
+        ([name]) => {
+          if (IMMUTABLE_RESPONSE_HEADERS.includes(name.toLowerCase())) {
+            lazy.logger.warn(
+              `network.continueResponse cannot currently modify the header "${name}", skipping (see Bug 1914351).`
+            );
+            return false;
+          }
+          return true;
+        }
       );
     }
 
@@ -690,20 +699,12 @@ class NetworkModule extends RootBiDiModule {
         reasonPhrase,
         `Expected "reasonPhrase" to be a string, got ${reasonPhrase}`
       );
-
-      throw new lazy.error.UnsupportedOperationError(
-        `"reasonPhrase" not supported yet in network.continueResponse`
-      );
     }
 
     if (statusCode !== null) {
       lazy.assert.positiveInteger(
         statusCode,
         `Expected "statusCode" to be a positive integer, got ${statusCode}`
-      );
-
-      throw new lazy.error.UnsupportedOperationError(
-        `"statusCode" not supported yet in network.continueResponse`
       );
     }
 
@@ -713,8 +714,39 @@ class NetworkModule extends RootBiDiModule {
       );
     }
 
-    const { authCallbacks, phase, request, resolveBlockedEvent } =
+    const { authCallbacks, phase, request, resolveBlockedEvent, response } =
       this.#blockedRequests.get(requestId);
+
+    if (headers !== null) {
+      // Delete all existing response headers.
+      response.headers
+        .filter(
+          ([name]) =>
+            // All headers in IMMUTABLE_RESPONSE_HEADERS cannot be changed and
+            // will lead to a NS_ERROR_ILLEGAL_VALUE error.
+            // Bug 1914351 should remove this limitation.
+            !IMMUTABLE_RESPONSE_HEADERS.includes(name.toLowerCase())
+        )
+        .forEach(([name]) => response.clearResponseHeader(name));
+
+      for (const [name, value] of deserializedHeaders) {
+        response.setResponseHeader(name, value, { merge: true });
+      }
+    }
+
+    if (cookies !== null) {
+      for (const cookie of cookies) {
+        const headerValue = this.#serializeSetCookieHeader(cookie);
+        response.setResponseHeader("Set-Cookie", headerValue, { merge: true });
+      }
+    }
+
+    if (statusCode !== null || reasonPhrase !== null) {
+      response.setResponseStatus({
+        status: statusCode,
+        statusText: reasonPhrase,
+      });
+    }
 
     if (
       phase !== InterceptPhase.ResponseStarted &&
@@ -989,7 +1021,7 @@ class NetworkModule extends RootBiDiModule {
           replacedHttpResponse.setResponseHeader(
             "Set-Cookie",
             headerValue,
-            false
+            true
           );
         }
       }
@@ -1326,8 +1358,7 @@ class NetworkModule extends RootBiDiModule {
     }
 
     const challenges = [];
-
-    for (const [name, value] of response.getHeadersList()) {
+    for (const [name, value] of response.headers) {
       if (name.toLowerCase() === headerName) {
         // A single header can contain several challenges.
         const headerChallenges = lazy.parseChallengeHeader(value);
@@ -1423,7 +1454,7 @@ class NetworkModule extends RootBiDiModule {
     const headers = [];
     const cookies = [];
 
-    for (const [name, value] of request.getHeadersList()) {
+    for (const [name, value] of request.headers) {
       headers.push(this.#serializeHeader(name, value));
       if (name.toLowerCase() == "cookie") {
         // TODO: Retrieve the actual cookies from the cookie store.
@@ -1441,7 +1472,7 @@ class NetworkModule extends RootBiDiModule {
       }
     }
 
-    const timings = request.getFetchTimings();
+    const timings = request.timings;
 
     return {
       request: requestId,
@@ -1469,9 +1500,9 @@ class NetworkModule extends RootBiDiModule {
     // TODO: Ideally we should have a `isCacheStateLocal` getter
     // const fromCache = response.isCacheStateLocal();
     const fromCache = response.fromCache;
-    const mimeType = response.getComputedMimeType();
+    const mimeType = response.mimeType;
     const headers = [];
-    for (const [name, value] of response.getHeadersList()) {
+    for (const [name, value] of response.headers) {
       headers.push(this.#serializeHeader(name, value));
     }
 
@@ -1675,7 +1706,7 @@ class NetworkModule extends RootBiDiModule {
       protocolEventName,
       beforeRequestSentEvent
     );
-    if (beforeRequestSentEvent.isBlocked) {
+    if (beforeRequestSentEvent.isBlocked && request.supportsInterception) {
       // TODO: Requests suspended in beforeRequestSent still reach the server at
       // the moment. https://bugzilla.mozilla.org/show_bug.cgi?id=1849686
       request.wrappedChannel.suspend(
@@ -1785,7 +1816,8 @@ class NetworkModule extends RootBiDiModule {
 
     if (
       protocolEventName === "network.responseStarted" &&
-      responseEvent.isBlocked
+      responseEvent.isBlocked &&
+      request.supportsInterception
     ) {
       request.wrappedChannel.suspend(
         this.#getSuspendMarkerText(request, "responseStarted")
@@ -1964,6 +1996,12 @@ class NetworkModule extends RootBiDiModule {
         this.#subscribeEvent(value);
       }
     }
+  }
+
+  _sendEventsForCachedResource(params) {
+    this.#onBeforeRequestSent("beforerequest-sent", params);
+    this.#onResponseEvent("response-started", params);
+    this.#onResponseEvent("response-completed", params);
   }
 
   _setDecodedBodySize(params) {

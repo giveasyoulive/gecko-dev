@@ -397,8 +397,8 @@ nsStyleBorder::nsStyleBorder()
       mBorderImageSlice(
           {StyleRectWithAllSides(StyleNumberOrPercentage::Percentage({1.})),
            false}),
-      mBorderImageRepeatH(StyleBorderImageRepeat::Stretch),
-      mBorderImageRepeatV(StyleBorderImageRepeat::Stretch),
+      mBorderImageRepeat{StyleBorderImageRepeatKeyword::Stretch,
+                         StyleBorderImageRepeatKeyword::Stretch},
       mFloatEdge(StyleFloatEdge::ContentBox),
       mBoxDecorationBreak(StyleBoxDecorationBreak::Slice),
       mBorderTopColor(StyleColor::CurrentColor()),
@@ -421,8 +421,7 @@ nsStyleBorder::nsStyleBorder(const nsStyleBorder& aSrc)
       mBorderImageWidth(aSrc.mBorderImageWidth),
       mBorderImageOutset(aSrc.mBorderImageOutset),
       mBorderImageSlice(aSrc.mBorderImageSlice),
-      mBorderImageRepeatH(aSrc.mBorderImageRepeatH),
-      mBorderImageRepeatV(aSrc.mBorderImageRepeatV),
+      mBorderImageRepeat(aSrc.mBorderImageRepeat),
       mFloatEdge(aSrc.mFloatEdge),
       mBoxDecorationBreak(aSrc.mBoxDecorationBreak),
       mBorderTopColor(aSrc.mBorderTopColor),
@@ -516,8 +515,7 @@ nsChangeHint nsStyleBorder::CalcDifference(
   // actually loaded.
   if (!mBorderImageSource.IsNone() || !aNewData.mBorderImageSource.IsNone()) {
     if (mBorderImageSource != aNewData.mBorderImageSource ||
-        mBorderImageRepeatH != aNewData.mBorderImageRepeatH ||
-        mBorderImageRepeatV != aNewData.mBorderImageRepeatV ||
+        mBorderImageRepeat != aNewData.mBorderImageRepeat ||
         mBorderImageSlice != aNewData.mBorderImageSlice ||
         mBorderImageWidth != aNewData.mBorderImageWidth) {
       return nsChangeHint_RepaintFrame;
@@ -533,8 +531,7 @@ nsChangeHint nsStyleBorder::CalcDifference(
 
   // mBorderImage* fields are checked only when border-image is not 'none'.
   if (mBorderImageSource != aNewData.mBorderImageSource ||
-      mBorderImageRepeatH != aNewData.mBorderImageRepeatH ||
-      mBorderImageRepeatV != aNewData.mBorderImageRepeatV ||
+      mBorderImageRepeat != aNewData.mBorderImageRepeat ||
       mBorderImageSlice != aNewData.mBorderImageSlice ||
       mBorderImageWidth != aNewData.mBorderImageWidth) {
     return nsChangeHint_NeutralChange;
@@ -3161,7 +3158,8 @@ nsStyleUIReset::nsStyleUIReset(const nsStyleUIReset& aSource)
       mViewTimelineNameCount(aSource.mViewTimelineNameCount),
       mViewTimelineAxisCount(aSource.mViewTimelineAxisCount),
       mViewTimelineInsetCount(aSource.mViewTimelineInsetCount),
-      mFieldSizing(aSource.mFieldSizing) {
+      mFieldSizing(aSource.mFieldSizing),
+      mViewTransitionName(aSource.mViewTransitionName) {
   MOZ_COUNT_CTOR(nsStyleUIReset);
 }
 
@@ -3196,6 +3194,10 @@ nsChangeHint nsStyleUIReset::CalcDifference(
 
   if (mWindowDragging != aNewData.mWindowDragging) {
     hint |= nsChangeHint_SchedulePaint;
+  }
+
+  if (mViewTransitionName != aNewData.mViewTransitionName) {
+    hint |= nsChangeHint_NeutralChange;
   }
 
   if (!hint &&

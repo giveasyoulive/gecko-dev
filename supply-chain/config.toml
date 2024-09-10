@@ -47,10 +47,6 @@ notes = "This is a pinned version of the upstream code, presumably to get a fix 
 audit-as-crates-io = true
 notes = "This is upstream plus a warning fix from bug 1823866."
 
-[policy.d3d12]
-audit-as-crates-io = true
-notes = "Part of the wgpu repository, pinned as the rest of wgpu crates."
-
 [policy.firefox-on-glean]
 audit-as-crates-io = false
 notes = "The crates.io version of this is just a placeholder to allow public crates to depend on firefox-on-glean."
@@ -97,6 +93,9 @@ notes = "This crate has two testing-only dependencies which are specified as reg
 [policy.libudev-sys]
 audit-as-crates-io = false
 notes = "This override is an api-compatible fork with an orthogonal implementation."
+
+[policy."libz-rs-sys:0.2.1@git:4aa430ccb77537d0d60dab8db993ca51bb1194c5"]
+audit-as-crates-io = true
 
 [policy.malloc_size_of_derive]
 audit-as-crates-io = false
@@ -230,6 +229,9 @@ notes = "Local override of the crates.io crate that uses a non-vendored local co
 
 [policy.wr_malloc_size_of]
 audit-as-crates-io = false
+
+[policy."zlib-rs:0.2.1@git:4aa430ccb77537d0d60dab8db993ca51bb1194c5"]
+audit-as-crates-io = true
 
 [[exemptions.ahash]]
 version = "0.7.6"

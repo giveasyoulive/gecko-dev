@@ -246,6 +246,9 @@ const PREF_URLBAR_DEFAULTS = new Map([
   // sponsored and recommended results related to the user's search string.
   ["quicksuggest.enabled", false],
 
+  // Comma-separated list of Suggest exposure suggestion types to enable.
+  ["quicksuggest.exposureSuggestionTypes", ""],
+
   // Whether non-sponsored quick suggest results are subject to impression
   // frequency caps. This pref is a fallback for the Nimbus variable
   // `quickSuggestImpressionCapsNonSponsoredEnabled`.
@@ -361,6 +364,7 @@ const PREF_URLBAR_DEFAULTS = new Map([
   ["shortcuts.bookmarks", true],
   ["shortcuts.tabs", true],
   ["shortcuts.history", true],
+  ["shortcuts.actions", false],
 
   // Boolean to determine if the providers defined in `exposureResults`
   // should be displayed in search results. This can be set by a
@@ -1544,6 +1548,9 @@ class Preferences {
    */
   _getPrefValue(pref) {
     switch (pref) {
+      case "shortcuts.actions": {
+        return this.get("scotchBonnet.enableOverride") || this._readPref(pref);
+      }
       case "defaultBehavior": {
         let val = 0;
         for (let type of Object.keys(SUGGEST_PREF_TO_BEHAVIOR)) {
@@ -1581,6 +1588,14 @@ class Preferences {
         }
         return new Set(value);
       }
+      case "exposureResults":
+      case "quicksuggest.exposureSuggestionTypes":
+        return new Set(
+          this._readPref(pref)
+            .split(",")
+            .map(s => s.trim())
+            .filter(s => !!s)
+        );
     }
     return this._readPref(pref);
   }

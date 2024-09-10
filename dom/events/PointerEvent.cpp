@@ -339,6 +339,8 @@ bool PointerEvent::EnableGetCoalescedEvents(JSContext* aCx, JSObject* aGlobal) {
 void PointerEvent::GetCoalescedEvents(
     nsTArray<RefPtr<PointerEvent>>& aPointerEvents) {
   WidgetPointerEvent* widgetEvent = mEvent->AsPointerEvent();
+  MOZ_ASSERT(widgetEvent);
+  EnsureFillingCoalescedEvents(*widgetEvent);
   if (mCoalescedEvents.IsEmpty() && widgetEvent &&
       widgetEvent->mCoalescedWidgetEvents &&
       !widgetEvent->mCoalescedWidgetEvents->mEvents.IsEmpty()) {
@@ -347,6 +349,7 @@ void PointerEvent::GetCoalescedEvents(
          widgetEvent->mCoalescedWidgetEvents->mEvents) {
       RefPtr<PointerEvent> domEvent =
           NS_NewDOMPointerEvent(owner, nullptr, &event);
+      domEvent->mCoalescedOrPredictedEvent = true;
 
       // The dom event is derived from an OS generated widget event. Setup
       // mWidget and mPresContext since they are necessary to calculate
@@ -380,9 +383,31 @@ void PointerEvent::GetCoalescedEvents(
   aPointerEvents.AppendElements(mCoalescedEvents);
 }
 
+void PointerEvent::EnsureFillingCoalescedEvents(
+    WidgetPointerEvent& aWidgetEvent) {
+  if (!aWidgetEvent.IsTrusted() || aWidgetEvent.mMessage != ePointerMove ||
+      !mCoalescedEvents.IsEmpty() ||
+      (aWidgetEvent.mCoalescedWidgetEvents &&
+       !aWidgetEvent.mCoalescedWidgetEvents->mEvents.IsEmpty()) ||
+      mCoalescedOrPredictedEvent) {
+    return;
+  }
+  if (!aWidgetEvent.mCoalescedWidgetEvents) {
+    aWidgetEvent.mCoalescedWidgetEvents = new WidgetPointerEventHolder();
+  }
+  WidgetPointerEvent* const coalescedEvent =
+      aWidgetEvent.mCoalescedWidgetEvents->mEvents.AppendElement(
+          WidgetPointerEvent(true, aWidgetEvent.mMessage,
+                             aWidgetEvent.mWidget));
+  MOZ_ASSERT(coalescedEvent);
+  PointerEventHandler::InitCoalescedEventFromPointerEvent(*coalescedEvent,
+                                                          aWidgetEvent);
+}
+
 void PointerEvent::GetPredictedEvents(
     nsTArray<RefPtr<PointerEvent>>& aPointerEvents) {
   // XXX Add support for native predicted events, bug 1550461
+  // And when doing so, update mCoalescedOrPredictedEvent here.
   if (mEvent->IsTrusted() && mEvent->mTarget) {
     for (RefPtr<PointerEvent>& pointerEvent : mPredictedEvents) {
       // Only set event target when it's null.

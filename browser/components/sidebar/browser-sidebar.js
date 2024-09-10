@@ -89,6 +89,9 @@ var SidebarController = {
           menuL10nId: "menu-view-history-button",
           revampL10nId: "sidebar-menu-history-label",
           iconUrl: "chrome://browser/content/firefoxview/view-history.svg",
+          contextMenuId: this.sidebarRevampEnabled
+            ? "sidebar-history-context-menu"
+            : undefined,
         }),
       ],
       [
@@ -103,6 +106,9 @@ var SidebarController = {
           menuL10nId: "menu-view-synced-tabs-sidebar",
           revampL10nId: "sidebar-menu-synced-tabs-label",
           iconUrl: "chrome://browser/content/firefoxview/view-syncedtabs.svg",
+          contextMenuId: this.sidebarRevampEnabled
+            ? "sidebar-synced-tabs-context-menu"
+            : undefined,
         }),
       ],
       [
@@ -256,6 +262,9 @@ var SidebarController = {
   },
 
   async init() {
+    // Initialize with side effects
+    this.SidebarManager;
+
     this._box = document.getElementById("sidebar-box");
     this._splitter = document.getElementById("sidebar-splitter");
     this._reversePositionButton = document.getElementById(
@@ -522,14 +531,14 @@ var SidebarController = {
     let sidebarContainer = document.getElementById("sidebar-main");
     let sidebarMain = document.querySelector("sidebar-main");
     if (!this._positionStart) {
-      // DOM ordering is:     sidebar-main |  sidebar-box  | splitter |   appcontent  |
-      // Want to display as:  |   appcontent  | splitter |  sidebar-box  | sidebar-main
-      // So we just swap box and appcontent ordering and move sidebar-main to the end
-      let appcontent = document.getElementById("appcontent");
+      // DOM ordering is:     sidebar-main |  sidebar-box  | splitter | tabbrowser-tabbox |
+      // Want to display as:  |   tabbrowser-tabbox  | splitter |  sidebar-box  | sidebar-main
+      // So we just swap box and tabbrowser-tabbox ordering and move sidebar-main to the end
+      let tabbox = document.getElementById("tabbrowser-tabbox");
       let boxOrdinal = this._box.style.order;
-      this._box.style.order = appcontent.style.order;
+      this._box.style.order = tabbox.style.order;
 
-      appcontent.style.order = boxOrdinal;
+      tabbox.style.order = boxOrdinal;
       // the launcher should be on the right of the sidebar-box
       sidebarContainer.style.order = parseInt(this._box.style.order) + 1;
       // Indicate we've switched ordering to the box
@@ -733,6 +742,17 @@ var SidebarController = {
     return this.isOpen ? this._box.getAttribute("sidebarcommand") : "";
   },
 
+  /**
+   * The context menu of the current sidebar.
+   */
+  get currentContextMenu() {
+    const sidebar = this.sidebars.get(this.currentID);
+    if (!sidebar) {
+      return null;
+    }
+    return document.getElementById(sidebar.contextMenuId);
+  },
+
   get title() {
     return this._title.value;
   },
@@ -780,10 +800,182 @@ var SidebarController = {
     return this.show(commandID, triggerNode);
   },
 
-  handleToolbarButtonClick() {
+  async _drawImagesToCanvas() {
+    let selectedBrowser = gBrowser.selectedBrowser;
+    let {
+      sidebarBackgroundColor,
+      sidebarBrowserWidth,
+      contentBrowserWidth,
+      contentBrowserHeight,
+    } = await window.promiseDocumentFlushed(() => {
+      let results = {};
+      results.sidebarBackgroundColor = window.getComputedStyle(
+        this.browser.parentElement
+      ).backgroundColor;
+      results.sidebarBrowserWidth = this.browser.clientWidth;
+      results.contentBrowserWidth = selectedBrowser.clientWidth;
+      results.contentBrowserHeight = selectedBrowser.clientHeight;
+      return results;
+    });
+
+    let width;
+    if (this.sidebarMain.open) {
+      width = contentBrowserWidth + sidebarBrowserWidth;
+    } else {
+      width = contentBrowserWidth;
+    }
+    let height = contentBrowserHeight;
+
+    let canvas = new OffscreenCanvas(width, height);
+    let context = canvas.getContext("2d");
+
+    let selectedBrowserSnapshot =
+      await selectedBrowser.browsingContext.currentWindowGlobal.drawSnapshot(
+        null,
+        1,
+        sidebarBackgroundColor
+      );
+    if (this.sidebarMain.open) {
+      let sidebarSnapshot =
+        await this.browser.browsingContext.currentWindowGlobal.drawSnapshot(
+          null,
+          1,
+          sidebarBackgroundColor
+        );
+      if (!this._positionStart) {
+        context.drawImage(selectedBrowserSnapshot, 0, 0);
+        context.drawImage(sidebarSnapshot, contentBrowserWidth, 0);
+      } else {
+        context.drawImage(sidebarSnapshot, 0, 0);
+        context.drawImage(selectedBrowserSnapshot, sidebarBrowserWidth, 0);
+      }
+    } else {
+      context.drawImage(selectedBrowserSnapshot, 0, 0);
+    }
+    return canvas;
+  },
+
+  async _animateSidebarMain() {
+    // Temporarily pause resizeobserver on sidebarMain
+    this._mainResizeObserver.unobserve(this.sidebarMain);
+    let canvas = await this._drawImagesToCanvas();
+
+    let initialSidebarMainWidth = await window.promiseDocumentFlushed(
+      () => this.sidebarMain.clientWidth
+    );
+
+    await new Promise(resolve => {
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          document.documentElement.style.setProperty(
+            `--sidebar-${
+              this.sidebarMain.expanded ? "expanded" : "collapsed"
+            }-width`,
+            `${initialSidebarMainWidth}px`
+          );
+          resolve();
+        }, 0);
+      });
+    });
+
+    let blob = await canvas.convertToBlob();
+    // Remove any existing screenshot overlays if needed
+    let existingScreenshotOverlay = document.querySelector(
+      ".sidebar-animation-screenshot"
+    );
+    if (existingScreenshotOverlay) {
+      existingScreenshotOverlay.remove();
+    }
+    let screenshotOverlay = document.createElement("div");
+    let img = document.createElement("img");
+    screenshotOverlay.classList.add("sidebar-animation-screenshot");
+    let url = URL.createObjectURL(blob);
+    img.src = url;
+    screenshotOverlay.appendChild(img);
+
+    img.onload = () => {
+      URL.revokeObjectURL(img.src);
+    };
+    let parentHbox = this.sidebarMain.closest("#browser");
+    let parentNode = this.sidebarMain.parentNode;
+    if (!this.sidebarMain.expanded) {
+      screenshotOverlay.classList.add("collapsed");
+      if (screenshotOverlay.classList.contains("expanded")) {
+        screenshotOverlay.classList.remove("expanded");
+      }
+    } else {
+      screenshotOverlay.classList.add("expanded");
+      if (screenshotOverlay.classList.contains("collapsed")) {
+        screenshotOverlay.classList.remove("collapsed");
+      }
+    }
+    if (!this._positionStart) {
+      screenshotOverlay.classList.add("positionend");
+    }
+    parentHbox.insertBefore(screenshotOverlay, parentNode);
+    screenshotOverlay.classList.add("translate");
+
+    if (!this.sidebarMain.expanded) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          this.toggleExpanded();
+        });
+      });
+    } else {
+      this.expandAfterTranslate = true;
+    }
+
+    screenshotOverlay.addEventListener(
+      "animationend",
+      this._onScreenshotOverlayAnimationEnd.bind(this)
+    );
+  },
+
+  async _onScreenshotOverlayAnimationEnd(e) {
+    if (
+      this.expandAfterTranslate &&
+      e.animationName.includes("translate-collapse")
+    ) {
+      this.toggleExpanded();
+      this.expandAfterAnimation = false;
+    }
+    if (e.animationName.includes("translate")) {
+      let screenshotOverlay = document.querySelector(
+        ".sidebar-animation-screenshot"
+      );
+      screenshotOverlay.classList.remove("translate");
+      if (this.sidebarMain.expanded) {
+        screenshotOverlay.classList.add("expanded");
+        if (screenshotOverlay.classList.contains("collapsed")) {
+          screenshotOverlay.classList.remove("collapsed");
+        }
+      } else {
+        screenshotOverlay.classList.add("collapsed");
+        if (screenshotOverlay.classList.contains("expanded")) {
+          screenshotOverlay.classList.remove("expanded");
+        }
+      }
+      screenshotOverlay.classList.add("fadeOut");
+    }
+    if (e.animationName.includes("opacity")) {
+      let screenshotOverlay = document.querySelector(
+        ".sidebar-animation-screenshot"
+      );
+      screenshotOverlay.classList.remove("fadeOut");
+      let screenshot = document.querySelector(".sidebar-animation-screenshot");
+      screenshot.remove();
+      this._mainResizeObserver.observe(this.sidebarMain);
+    }
+  },
+
+  async handleToolbarButtonClick() {
     switch (this.sidebarRevampVisibility) {
       case "always-show":
-        this.toggleExpanded();
+        if (!window.gReduceMotion) {
+          this._animateSidebarMain();
+        } else {
+          this.toggleExpanded();
+        }
         break;
       case "hide-sidebar": {
         const isHidden = this.sidebarContainer.hidden;
@@ -798,7 +990,6 @@ var SidebarController = {
         break;
       }
     }
-    this.updateToolbarButton();
   },
 
   /**
@@ -835,12 +1026,34 @@ var SidebarController = {
       "expanded",
       this._sidebarMain.expanded
     );
+    this.updateToolbarButton();
   },
 
   _loadSidebarExtension(commandID) {
     let sidebar = this.sidebars.get(commandID);
     if (typeof sidebar.onload === "function") {
       sidebar.onload();
+    }
+  },
+
+  /**
+   * Ensure tools reflect the current pref state
+   */
+  refreshTools() {
+    let changed = false;
+    const tools = new Set(this.sidebarRevampTools.split(","));
+    this.toolsAndExtensions.forEach((tool, commandID) => {
+      const toolID = defaultTools[commandID];
+      if (toolID) {
+        const expected = !tools.has(toolID);
+        if (tool.disabled != expected) {
+          tool.disabled = expected;
+          changed = true;
+        }
+      }
+    });
+    if (changed) {
+      window.dispatchEvent(new CustomEvent("SidebarItemChanged"));
     }
   },
 
@@ -1167,7 +1380,8 @@ var SidebarController = {
       this._box.setAttribute("checked", "true");
       this._box.setAttribute("sidebarcommand", commandID);
 
-      let { icon, url, title, sourceL10nEl } = this.sidebars.get(commandID);
+      let { icon, url, title, sourceL10nEl, contextMenuId } =
+        this.sidebars.get(commandID);
       if (icon) {
         this._switcherTarget.style.setProperty(
           "--webextension-menuitem-image",
@@ -1177,6 +1391,12 @@ var SidebarController = {
         this._switcherTarget.style.removeProperty(
           "--webextension-menuitem-image"
         );
+      }
+
+      if (contextMenuId) {
+        this._box.setAttribute("context", contextMenuId);
+      } else {
+        this._box.removeAttribute("context");
       }
 
       // use to live update <tree> elements if the locale changes
@@ -1256,6 +1476,7 @@ var SidebarController = {
     this.browser.docShell?.createAboutBlankDocumentViewer(null, null);
 
     this._box.removeAttribute("checked");
+    this._box.removeAttribute("context");
     this._box.hidden = this._splitter.hidden = true;
 
     let selBrowser = gBrowser.selectedBrowser;
@@ -1309,11 +1530,6 @@ var SidebarController = {
       arrowScrollbox.setAttribute("orient", "vertical");
       tabStrip.setAttribute("orient", "vertical");
       verticalTabs.append(tabStrip);
-
-      // Enable revamped sidebar if vertical tabs is enabled
-      if (!this.sidebarRevampEnabled) {
-        Services.prefs.setBoolPref("sidebar.revamp", true);
-      }
     } else {
       arrowScrollbox.setAttribute("orient", "horizontal");
       tabStrip.removeAttribute("expanded");
@@ -1336,6 +1552,10 @@ var SidebarController = {
     verticalTabs.toggleAttribute("visible", this.sidebarVerticalTabsEnabled);
   },
 };
+
+ChromeUtils.defineESModuleGetters(SidebarController, {
+  SidebarManager: "resource:///modules/SidebarManager.sys.mjs",
+});
 
 // Add getters related to the position here, since we will want them
 // available for both startDelayedLoad and init.
@@ -1365,7 +1585,12 @@ XPCOMUtils.defineLazyPreferenceGetter(
   SidebarController,
   "sidebarRevampTools",
   "sidebar.main.tools",
-  "aichat,syncedtabs,history"
+  "aichat,syncedtabs,history",
+  () => {
+    if (!SidebarController.uninitializing) {
+      SidebarController.refreshTools();
+    }
+  }
 );
 XPCOMUtils.defineLazyPreferenceGetter(
   SidebarController,

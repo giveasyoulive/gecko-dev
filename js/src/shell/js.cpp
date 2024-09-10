@@ -27,6 +27,7 @@
 #include "mozilla/Variant.h"
 
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #ifdef XP_WIN
 #  include <direct.h>
@@ -165,8 +166,9 @@
 #include "js/StructuredClone.h"
 #include "js/SweepingAPI.h"
 #include "js/Transcoding.h"  // JS::TranscodeBuffer, JS::TranscodeRange, JS::IsTranscodeFailureResult
-#include "js/Warnings.h"    // JS::SetWarningReporter
-#include "js/WasmModule.h"  // JS::WasmModule
+#include "js/Warnings.h"      // JS::SetWarningReporter
+#include "js/WasmFeatures.h"  // JS_FOR_WASM_FEATURES
+#include "js/WasmModule.h"    // JS::WasmModule
 #include "js/Wrapper.h"
 #include "proxy/DeadObjectProxy.h"  // js::IsDeadProxyObject
 #include "shell/jsoptparse.h"
@@ -193,6 +195,7 @@
 #include "vm/JSFunction.h"
 #include "vm/JSObject.h"
 #include "vm/JSScript.h"
+#include "vm/Logging.h"
 #include "vm/ModuleBuilder.h"  // js::ModuleBuilder
 #include "vm/Modules.h"
 #include "vm/Monitor.h"
@@ -333,6 +336,114 @@ enum JSShellExitCode {
   EXITCODE_OUT_OF_MEMORY = 5,
   EXITCODE_TIMEOUT = 6
 };
+
+struct ShellLogModule {
+  // Since ShellLogModules have references to their levels created
+  // we can't move them.
+  ShellLogModule(ShellLogModule&&) = delete;
+
+  const char* name;
+  explicit ShellLogModule(const char* name) : name(name) {}
+  mozilla::AtomicLogLevel level;
+};
+
+// If asserts related to this ever fail, simply bump this number.
+//
+// This is used to construct a mozilla::Array, which is used because a
+// ShellLogModule cannot move once constructed to avoid invalidating
+// a levelRef.
+static const int MAX_LOG_MODULES = 64;
+static int initialized_modules = 0;
+mozilla::Array<mozilla::Maybe<ShellLogModule>, MAX_LOG_MODULES> logModules;
+
+JS::OpaqueLogger GetLoggerByName(const char* name) {
+  // Check for pre-existing module
+  for (auto& logger : logModules) {
+    if (logger) {
+      if (logger->name == name) {
+        return logger.ptr();
+      }
+    }
+    // We've seen all initialized, not there, break out.
+    if (!logger) break;
+  }
+
+  // Not found, allocate a new module.
+  MOZ_RELEASE_ASSERT(initialized_modules < MAX_LOG_MODULES - 1);
+  auto index = initialized_modules++;
+  logModules[index].emplace(name);
+  return logModules[index].ptr();
+}
+
+mozilla::AtomicLogLevel& GetLevelRef(JS::OpaqueLogger logger) {
+  ShellLogModule* slm = static_cast<ShellLogModule*>(logger);
+  return slm->level;
+}
+
+void LogPrintVA(const JS::OpaqueLogger logger, mozilla::LogLevel level,
+                const char* fmt, va_list ap) {
+  ShellLogModule* mod = static_cast<ShellLogModule*>(logger);
+  fprintf(stderr, "[%s] ", mod->name);
+  vfprintf(stderr, fmt, ap);
+  fprintf(stderr, "\n");
+}
+
+JS::LoggingInterface shellLoggingInterface = {GetLoggerByName, LogPrintVA,
+                                              GetLevelRef};
+
+static void ToLower(const char* src, char* dest, size_t len) {
+  for (size_t c = 0; c < len; c++) {
+    dest[c] = (char)(tolower(src[c]));
+  }
+}
+
+// Run this after initialiation!
+void ParseLoggerOptions() {
+  char* mixedCaseOpts = getenv("MOZ_LOG");
+  if (!mixedCaseOpts) {
+    return;
+  }
+
+  // Copy into a new buffer and lower case to do case insensitive matching.
+  //
+  // Done this way rather than just using strcasestr because Windows doesn't
+  // have strcasestr as part of its base C library.
+  size_t len = strlen(mixedCaseOpts);
+  mozilla::UniqueFreePtr<char[]> logOpts(static_cast<char*>(calloc(len, 1)));
+  if (!logOpts) {
+    return;
+  }
+
+  ToLower(mixedCaseOpts, logOpts.get(), len);
+
+  // This is a really permissive parser, but will suffice!
+  for (auto& logger : logModules) {
+    if (logger) {
+      // Lowercase the logger name for strstr
+      size_t len = strlen(logger->name);
+      mozilla::UniqueFreePtr<char[]> lowerName(
+          static_cast<char*>(calloc(len, 1)));
+      ToLower(logger->name, lowerName.get(), len);
+
+      if (char* needle = strstr(logOpts.get(), lowerName.get())) {
+        // If the string to enable a logger is present, but no level is provided
+        // then default to Debug level.
+        int logLevel = static_cast<int>(mozilla::LogLevel::Debug);
+
+        if (char* colon = strchr(needle, ':')) {
+          // Parse character after colon as log level.
+          if (*(colon + 1)) {
+            logLevel = atoi(colon + 1);
+          }
+        }
+
+        fprintf(stderr, "[JS_LOG] Enabling Logger %s at level %d\n",
+                logger->name, logLevel);
+        logger->level = mozilla::ToLogLevel(logLevel);
+      }
+    }
+  }
+}
 
 /*
  * Limit the timeout to 30 minutes to prevent an overflow on platfoms
@@ -11797,10 +11908,27 @@ static bool SetJSPrefToValue(const char* name, size_t nameLen,
   return false;
 }
 
+static bool IsJSPrefAvailable(const char* pref) {
+  if (!fuzzingSafe) {
+    // All prefs in fuzzing unsafe mode are enabled.
+    return true;
+  }
+#define WASM_FEATURE(NAME, LOWER_NAME, COMPILE_PRED, COMPILER_PRED, FLAG_PRED, \
+                     FLAG_FORCE_ON, FLAG_FUZZ_ON, PREF)                        \
+  if constexpr (!FLAG_FUZZ_ON) {                                               \
+    if (strcmp("wasm_" #PREF, pref) == 0) {                                    \
+      return false;                                                            \
+    }                                                                          \
+  }
+  JS_FOR_WASM_FEATURES(WASM_FEATURE)
+#undef WASM_FEATURE
+  return true;
+}
+
 static bool SetJSPref(const char* pref) {
   const char* assign = strchr(pref, '=');
   if (!assign) {
-    if (!SetJSPrefToTrueForBool(pref)) {
+    if (IsJSPrefAvailable(pref) && !SetJSPrefToTrueForBool(pref)) {
       return false;
     }
     return true;
@@ -11809,7 +11937,7 @@ static bool SetJSPref(const char* pref) {
   size_t nameLen = assign - pref;
   const char* valStart = assign + 1;  // Skip '='.
 
-  if (!SetJSPrefToValue(pref, nameLen, valStart)) {
+  if (IsJSPrefAvailable(pref) && !SetJSPrefToValue(pref, nameLen, valStart)) {
     return false;
   }
   return true;
@@ -11817,6 +11945,9 @@ static bool SetJSPref(const char* pref) {
 
 static void ListJSPrefs() {
   auto printPref = [](const char* name, auto defaultVal) {
+    if (!IsJSPrefAvailable(name)) {
+      return;
+    }
     using T = decltype(defaultVal);
     if constexpr (std::is_same_v<T, bool>) {
       fprintf(stderr, "%s=%s\n", name, defaultVal ? "true" : "false");
@@ -11977,6 +12108,11 @@ int main(int argc, char** argv) {
   if (!cx) {
     return 1;
   }
+
+  if (!JS::SetLoggingInterface(shellLoggingInterface)) {
+    return 1;
+  }
+  ParseLoggerOptions();
 
   // Register telemetry callbacks, if needed.
   if (telemetryLock) {
@@ -12623,15 +12759,9 @@ bool SetGlobalOptionsPreJSInit(const OptionParser& op) {
     JS::Prefs::setAtStartup_experimental_regexp_escape(true);
   }
 #endif
-#ifdef ENABLE_JSON_PARSE_WITH_SOURCE
   if (op.getBoolOption("enable-json-parse-with-source")) {
     JS::Prefs::set_experimental_json_parse_with_source(true);
   }
-#else
-  if (op.getBoolOption("enable-json-parse-with-source")) {
-    fprintf(stderr, "JSON.parse with source is not enabled on this build.\n");
-  }
-#endif
 
   if (op.getBoolOption("disable-weak-refs")) {
     JS::Prefs::setAtStartup_weakrefs(false);

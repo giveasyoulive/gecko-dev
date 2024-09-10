@@ -446,13 +446,13 @@ web-platform-tests-canvas:
     chunks:
         by-test-platform:
             windows.*: 2
-            .*tsan.*: 2
+            .*tsan.*: 3
             linux.*/debug: 2
-            linux.*asan.*: 2
+            linux.*asan.*: 3
             default: 1
     max-run-time:
         by-test-platform:
-            .*tsan.*: 3600
+            .*(-tsan|-asan).*: 2700
             default: 1800
     variants:
         - no-fission
@@ -752,3 +752,4 @@ test-coverage-wpt:
     mozharness:
         extra-options:
             - --per-test-coverage
+            - --exclude-tag=webgpu  # https://bugzilla.mozilla.org/show_bug.cgi?id=1915310

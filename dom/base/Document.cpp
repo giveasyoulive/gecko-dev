@@ -215,6 +215,7 @@
 #include "mozilla/dom/ProcessingInstruction.h"
 #include "mozilla/dom/Promise.h"
 #include "mozilla/dom/PromiseNativeHandler.h"
+#include "mozilla/dom/RemoteBrowser.h"
 #include "mozilla/dom/ResizeObserver.h"
 #include "mozilla/dom/RustTypes.h"
 #include "mozilla/dom/SVGElement.h"
@@ -243,6 +244,7 @@
 #include "mozilla/dom/URL.h"
 #include "mozilla/dom/UseCounterMetrics.h"
 #include "mozilla/dom/UserActivation.h"
+#include "mozilla/dom/ViewTransition.h"
 #include "mozilla/dom/WakeLockJS.h"
 #include "mozilla/dom/WakeLockSentinel.h"
 #include "mozilla/dom/WindowBinding.h"
@@ -430,6 +432,7 @@
 #include "nsStyleSheetService.h"
 #include "nsStyleStruct.h"
 #include "nsTextControlFrame.h"
+#include "nsSubDocumentFrame.h"
 #include "nsTextNode.h"
 #include "nsUnicharUtils.h"
 #include "nsWrapperCache.h"
@@ -1281,6 +1284,12 @@ void DOMStyleSheetSetList::EnsureFresh() {
 
 Document::PendingFrameStaticClone::~PendingFrameStaticClone() = default;
 
+static InteractiveWidget DefaultInteractiveWidget() {
+  return StaticPrefs::dom_interactive_widget_default_resizes_visual()
+             ? InteractiveWidget::ResizesVisual
+             : InteractiveWidget::ResizesContent;
+}
+
 // ==================================================================
 // =
 // ==================================================================
@@ -1439,7 +1448,7 @@ Document::Document(const char* aContentType)
       mHttpsOnlyStatus(nsILoadInfo::HTTPS_ONLY_UNINITIALIZED),
       mViewportType(Unknown),
       mViewportFit(ViewportFitType::Auto),
-      mInteractiveWidgetMode(InteractiveWidget::ResizesContent),
+      mInteractiveWidgetMode(DefaultInteractiveWidget()),
       mHeaderData(nullptr),
       mServoRestyleRootDirtyBits(0),
       mThrowOnDynamicMarkupInsertionCounter(0),
@@ -2083,28 +2092,6 @@ static void AccumulatePriorityFcpGleanPref(
     MOZ_ASSERT_UNREACHABLE("Unknown value for http3WithPriorityKey");
   }
 }
-
-static void AccumulateEarlyHintFcpGleanPref(const nsCString& earlyHintKey,
-                                            const TimeDuration& duration) {
-  if (earlyHintKey == "preload_1"_ns) {
-    glean::performance_pageload::eh_fcp_preload_with_eh.AccumulateRawDuration(
-        duration);
-  } else if (earlyHintKey == "preload_0"_ns) {
-    glean::performance_pageload::eh_fcp_preload_without_eh
-        .AccumulateRawDuration(duration);
-  } else if (earlyHintKey == "preconnect_"_ns) {
-    glean::performance_pageload::eh_fcp_preconnect.AccumulateRawDuration(
-        duration);
-  } else if (earlyHintKey == "preconnect_preload_1"_ns) {
-    glean::performance_pageload::eh_fcp_preconnect_preload_with_eh
-        .AccumulateRawDuration(duration);
-  } else if (earlyHintKey == "preconnect_preload_0"_ns) {
-    glean::performance_pageload::eh_fcp_preconnect_preload_without_eh
-        .AccumulateRawDuration(duration);
-  } else {
-    MOZ_ASSERT_UNREACHABLE("Unknown value for earlyHintKey");
-  }
-}
 #endif
 
 void Document::AccumulatePageLoadTelemetry(
@@ -2262,16 +2249,6 @@ void Document::AccumulatePageLoadTelemetry(
 #endif
     }
 
-    if (!earlyHintKey.IsEmpty()) {
-      Telemetry::AccumulateTimeDelta(
-          Telemetry::EH_PERF_FIRST_CONTENTFUL_PAINT_MS, earlyHintKey,
-          navigationStart, firstContentfulComposite);
-#ifndef ANDROID
-      AccumulateEarlyHintFcpGleanPref(
-          earlyHintKey, firstContentfulComposite - navigationStart);
-#endif
-    }
-
     Telemetry::AccumulateTimeDelta(
         Telemetry::DNS_PERF_FIRST_CONTENTFUL_PAINT_MS, dnsKey, navigationStart,
         firstContentfulComposite);
@@ -2307,12 +2284,6 @@ void Document::AccumulatePageLoadTelemetry(
     if (!http3WithPriorityKey.IsEmpty()) {
       Telemetry::AccumulateTimeDelta(Telemetry::H3P_PERF_PAGE_LOAD_TIME_MS,
                                      http3WithPriorityKey, navigationStart,
-                                     loadEventStart);
-    }
-
-    if (!earlyHintKey.IsEmpty()) {
-      Telemetry::AccumulateTimeDelta(Telemetry::EH_PERF_PAGE_LOAD_TIME_MS,
-                                     earlyHintKey, navigationStart,
                                      loadEventStart);
     }
 
@@ -2618,6 +2589,7 @@ NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN_INTERNAL(Document)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mPrototypeDocument)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mMidasCommandManager)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mAll)
+  NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mActiveViewTransition)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mDocGroup)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mFrameRequestManager)
 
@@ -2747,6 +2719,7 @@ NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(Document)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mPrototypeDocument)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mMidasCommandManager)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mAll)
+  NS_IMPL_CYCLE_COLLECTION_UNLINK(mActiveViewTransition)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mReferrerInfo)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mPreloadReferrerInfo)
 
@@ -7405,14 +7378,15 @@ bool Document::ShouldThrottleFrameRequests() const {
   }
 
   // Note that because we have to scroll this document into view at least once
-  // to unthrottle it, we will drop one requestAnimationFrame frame when a
+  // to un-throttle it, we will drop one requestAnimationFrame frame when a
   // document that previously wasn't visible scrolls into view. This is
   // acceptable / unlikely to be human-perceivable, though we could improve on
   // it if needed by adding an intersection margin or something of that sort.
+  auto margin = DOMIntersectionObserver::LazyLoadingRootMargin();
   const IntersectionInput input = DOMIntersectionObserver::ComputeInput(
-      *el->OwnerDoc(), /* aRoot = */ nullptr, /* aRootMargin = */ nullptr);
-  const IntersectionOutput output =
-      DOMIntersectionObserver::Intersect(input, *el);
+      *el->OwnerDoc(), /* aRoot = */ nullptr, &margin);
+  const IntersectionOutput output = DOMIntersectionObserver::Intersect(
+      input, *el, DOMIntersectionObserver::BoxToUse::Content);
   return !output.Intersects();
 }
 
@@ -7940,6 +7914,14 @@ void Document::SetScopeObject(nsIGlobalObject* aGlobal) {
 #ifdef DEBUG
         AssertDocGroupMatchesKey();
 #endif
+
+        // Update data document's mMutationEventsEnabled early on so that
+        // we can avoid extra IsURIInPrefList calls.
+        if (mMutationEventsEnabled.isNothing()) {
+          mMutationEventsEnabled.emplace(
+              window->GetExtantDoc()->MutationEventsEnabled());
+        }
+
         return;
       }
 
@@ -8601,7 +8583,7 @@ void Document::RuleAdded(StyleSheet& aSheet, css::Rule& aRule) {
   }
 }
 
-void Document::ImportRuleLoaded(dom::CSSImportRule& aRule, StyleSheet& aSheet) {
+void Document::ImportRuleLoaded(StyleSheet& aSheet) {
   if (aSheet.IsApplicable()) {
     ApplicableStylesChanged();
   }
@@ -11145,10 +11127,7 @@ ViewportMetaData Document::GetViewportMetaData() const {
 static InteractiveWidget ParseInteractiveWidget(
     const ViewportMetaData& aViewportMetaData) {
   if (aViewportMetaData.mInteractiveWidgetMode.IsEmpty()) {
-    // The spec defines "use `resizes-visual` if no value specified", but here
-    // we use `resizes-content` for the backward compatibility now.
-    // We will change it in bug 1884807.
-    return InteractiveWidget::ResizesContent;
+    return DefaultInteractiveWidget();
   }
 
   if (aViewportMetaData.mInteractiveWidgetMode.EqualsIgnoreCase(
@@ -11163,8 +11142,7 @@ static InteractiveWidget ParseInteractiveWidget(
           "overlays-content")) {
     return InteractiveWidget::OverlaysContent;
   }
-  // For the same reason above empty case, we use `resizes-content` here.
-  return InteractiveWidget::ResizesContent;
+  return DefaultInteractiveWidget();
 }
 
 void Document::SetMetaViewportData(UniquePtr<ViewportMetaData> aData) {
@@ -16868,6 +16846,66 @@ void Document::UpdateIntersections(TimeStamp aNowTime) {
   });
 }
 
+void Document::UpdateRemoteFrameEffects() {
+  if (auto* wc = GetWindowContext(); wc && !wc->Children().IsEmpty()) {
+    auto margin = DOMIntersectionObserver::LazyLoadingRootMargin();
+    const IntersectionInput input = DOMIntersectionObserver::ComputeInput(
+        *this, /* aRoot = */ nullptr, &margin);
+    for (const RefPtr<BrowsingContext>& child : wc->Children()) {
+      Element* el = child->GetEmbedderElement();
+      if (!el) {
+        continue;
+      }
+      auto* rb = RemoteBrowser::GetFrom(el);
+      if (!rb) {
+        continue;
+      }
+      EffectsInfo info = [&] {
+        if (Hidden()) {
+          // If we're in the background, then the child frame should be hidden
+          // as well.
+          return EffectsInfo::FullyHidden();
+        }
+        const IntersectionOutput output = DOMIntersectionObserver::Intersect(
+            input, *el, DOMIntersectionObserver::BoxToUse::Content);
+        if (!output.Intersects()) {
+          // XXX do we want to pass the scale and such down even if out of the
+          // viewport?
+          return EffectsInfo::FullyHidden();
+        }
+        auto* frame = el->GetPrimaryFrame();
+        MOZ_ASSERT(frame, "How do we intersect with no frame?");
+        MOZ_ASSERT(frame->IsSubDocumentFrame(), "Hm?");
+        Maybe<nsRect> visibleRect;
+        gfx::MatrixScales rasterScale;
+        if (nsSubDocumentFrame* f = do_QueryFrame(frame)) {
+          visibleRect = f->GetVisibleRect();
+          if (!visibleRect) {
+            // If we have no visible rect (e.g., because we are zero-sized) we
+            // still want to provide the intersection rect in order to get the
+            // right throttling behavior.
+            visibleRect.emplace(*output.mIntersectionRect -
+                                output.mTargetRect.TopLeft());
+          }
+          rasterScale = f->GetRasterScale();
+        }
+        ParentLayerToScreenScale2D transformToAncestorScale =
+            ParentLayerToParentLayerScale(
+                frame->PresShell()->GetCumulativeResolution()) *
+            nsLayoutUtils::
+                GetTransformToAncestorScaleCrossProcessForFrameMetrics(frame);
+        return EffectsInfo::VisibleWithinRect(visibleRect, rasterScale,
+                                              transformToAncestorScale);
+      }();
+      rb->UpdateEffects(std::move(info));
+    }
+  }
+  EnumerateSubDocuments([](Document& aDoc) {
+    aDoc.UpdateRemoteFrameEffects();
+    return CallState::Continue;
+  });
+}
+
 void Document::NotifyIntersectionObservers() {
   const auto observers = ToTArray<nsTArray<RefPtr<DOMIntersectionObserver>>>(
       mIntersectionObservers);
@@ -17292,6 +17330,10 @@ void Document::NotifyUserGestureActivation(
 
     wc->NotifyUserGestureActivation(aModifiers);
   });
+
+  // If there has been a user activation, mark the current session history
+  // entry as having been interacted with.
+  SetSHEntryHasUserInteraction(true);
 }
 
 bool Document::HasBeenUserGestureActivated() {
@@ -17804,6 +17846,51 @@ void Document::ClearStaleServoData() {
   while (Element* root = iter.GetNextStyleRoot()) {
     RestyleManager::ClearServoDataFromSubtree(root);
   }
+}
+
+// https://drafts.csswg.org/css-view-transitions-1/#dom-document-startviewtransition
+already_AddRefed<ViewTransition> Document::StartViewTransition(
+    const Optional<OwningNonNull<ViewTransitionUpdateCallback>>& aCallback) {
+  // Steps 1-3
+  RefPtr transition = new ViewTransition(
+      *this, aCallback.WasPassed() ? &aCallback.Value() : nullptr);
+  if (Hidden()) {
+    // Step 4:
+    //
+    // If document's visibility state is "hidden", then skip transition with an
+    // "InvalidStateError" DOMException, and return transition.
+    transition->SkipTransition(SkipTransitionReason::DocumentHidden);
+    return transition.forget();
+  }
+  if (mActiveViewTransition) {
+    // Step 5:
+    // If document's active view transition is not null, then skip that view
+    // transition with an "AbortError" DOMException in this's relevant Realm.
+    mActiveViewTransition->SkipTransition(
+        SkipTransitionReason::ClobberedActiveTransition);
+  }
+  // Step 6: Set document's active view transition to transition.
+  mActiveViewTransition = transition;
+
+  if (mPresShell) {
+    if (nsRefreshDriver* rd = mPresShell->GetRefreshDriver()) {
+      rd->EnsureViewTransitionOperationsHappen();
+    }
+  }
+  // Step 7: return transition
+  return transition.forget();
+}
+
+void Document::ClearActiveViewTransition() { mActiveViewTransition = nullptr; }
+
+void Document::PerformPendingViewTransitionOperations() {
+  if (mActiveViewTransition) {
+    mActiveViewTransition->PerformPendingOperations();
+  }
+  EnumerateSubDocuments([](Document& aDoc) {
+    aDoc.PerformPendingViewTransitionOperations();
+    return CallState::Continue;
+  });
 }
 
 Selection* Document::GetSelection(ErrorResult& aRv) {
@@ -19619,6 +19706,17 @@ already_AddRefed<Document> Document::ParseHTMLUnsafe(GlobalObject& aGlobal,
   }
 
   return doc.forget();
+}
+
+bool Document::MutationEventsEnabled() {
+  if (StaticPrefs::dom_mutation_events_enabled()) {
+    return true;
+  }
+  if (mMutationEventsEnabled.isNothing()) {
+    mMutationEventsEnabled.emplace(
+        NodePrincipal()->IsURIInPrefList("dom.mutation_events.forceEnable"));
+  }
+  return mMutationEventsEnabled.value();
 }
 
 }  // namespace mozilla::dom

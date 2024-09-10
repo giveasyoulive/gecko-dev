@@ -51,6 +51,11 @@ const REGION_TOPICS_CONFIG =
   "browser.newtabpage.activity-stream.discoverystream.topicSelection.region-topics-config";
 const LOCALE_TOPICS_CONFIG =
   "browser.newtabpage.activity-stream.discoverystream.topicSelection.locale-topics-config";
+
+const REGION_TOPIC_LABEL_CONFIG =
+  "browser.newtabpage.activity-stream.discoverystream.topicLabels.region-topic-label-config";
+const LOCALE_TOPIC_LABEL_CONFIG =
+  "browser.newtabpage.activity-stream.discoverystream.topicLabels.locale-topic-label-config";
 const REGION_BASIC_CONFIG =
   "browser.newtabpage.activity-stream.discoverystream.region-basic-config";
 
@@ -58,6 +63,11 @@ const REGION_THUMBS_CONFIG =
   "browser.newtabpage.activity-stream.discoverystream.thumbsUpDown.region-thumbs-config";
 const LOCALE_THUMBS_CONFIG =
   "browser.newtabpage.activity-stream.discoverystream.thumbsUpDown.locale-thumbs-config";
+
+const REGION_CONTEXTUAL_CONTENT_CONFIG =
+  "browser.newtabpage.activity-stream.discoverystream.contextualContent.region-content-config";
+const LOCALE_CONTEXTUAL_CONTENT_CONFIG =
+  "browser.newtabpage.activity-stream.discoverystream.contextualContent.locale-content-config";
 
 // Determine if spocs should be shown for a geo/locale
 function showSpocs({ geo }) {
@@ -99,6 +109,22 @@ function showTopicsSelection({ geo, locale }) {
   return topicsGeo.includes(geo) && topicsLocale.includes(locale);
 }
 
+function showTopicLabels({ geo, locale }) {
+  const geoString =
+    Services.prefs.getStringPref(REGION_TOPIC_LABEL_CONFIG) || "";
+  const localeString =
+    Services.prefs.getStringPref(LOCALE_TOPIC_LABEL_CONFIG) || "";
+  const topicLabelGeo = geoString
+    .split(",")
+    .map(s => s.trim())
+    .filter(item => item);
+  const topicLabelLocale = localeString
+    .split(",")
+    .map(s => s.trim())
+    .filter(item => item);
+  return topicLabelGeo.includes(geo) && topicLabelLocale.includes(locale);
+}
+
 function showThumbsUpDown({ geo, locale }) {
   const thumbsUpDownGeoString =
     Services.prefs.getStringPref(REGION_THUMBS_CONFIG) || "";
@@ -113,6 +139,27 @@ function showThumbsUpDown({ geo, locale }) {
     .map(s => s.trim())
     .filter(item => item);
   return thumbsUpDownGeo.includes(geo) && thumbsUpDownLocale.includes(locale);
+}
+
+function showContextualContent({ geo, locale }) {
+  const contextualContentGeoString =
+    Services.prefs.getStringPref(REGION_CONTEXTUAL_CONTENT_CONFIG) || "";
+  const contextualContentLocaleString =
+    Services.prefs.getStringPref(LOCALE_CONTEXTUAL_CONTENT_CONFIG) || "";
+
+  const contextualContentGeo = contextualContentGeoString
+    .split(",")
+    .map(s => s.trim())
+    .filter(item => item);
+  const contextualContentLocale = contextualContentLocaleString
+    .split(",")
+    .map(s => s.trim())
+    .filter(item => item);
+
+  return (
+    contextualContentGeo.includes(geo) &&
+    contextualContentLocale.includes(locale)
+  );
 }
 
 // Configure default Activity Stream prefs with a plain `value` or a `getValue`
@@ -187,6 +234,20 @@ export const PREFS_CONFIG = new Map([
     {
       title: "Show sponsored top sites",
       value: true,
+    },
+  ],
+  [
+    "unifiedAds.enabled",
+    {
+      title: "Use Mozilla Ad Routing Service (MARS) unified ads API",
+      value: false,
+    },
+  ],
+  [
+    "unifiedAds.endpoint",
+    {
+      title: "Mozilla Ad Routing Service (MARS) unified ads API endpoint URL",
+      value: "https://ads.mozilla.org/",
     },
   ],
   [
@@ -354,6 +415,20 @@ export const PREFS_CONFIG = new Map([
     {
       title: "Boolean flag to turn layout variant A on and off",
       value: false,
+    },
+  ],
+  [
+    "newtabLayouts.variant-b",
+    {
+      title: "Boolean flag to turn layout variant B on and off",
+      value: false,
+    },
+  ],
+  [
+    "discoverystream.spoc-positions",
+    {
+      title: "CSV string of spoc position indexes on newtab Pocket grid",
+      value: "1,5,7,11,18,20",
     },
   ],
   [
@@ -588,7 +663,7 @@ export const PREFS_CONFIG = new Map([
     {
       title: "Topics available",
       value:
-        "business, arts, food, health, finance, government, sports, tech, travel, education, society",
+        "business, arts, food, health, finance, government, sports, tech, travel, education-science, society",
     },
   ],
   [
@@ -653,7 +728,8 @@ export const PREFS_CONFIG = new Map([
     "discoverystream.topicLabels.enabled",
     {
       title: "Enables topic labels for discovery stream",
-      value: true,
+      // pref is dynamic
+      getValue: showTopicLabels,
     },
   ],
   [
@@ -674,6 +750,28 @@ export const PREFS_CONFIG = new Map([
     {
       title: "Controls if spocs should be included in startup cache.",
       value: true,
+    },
+  ],
+  [
+    "discoverystream.contextualContent.enabled",
+    {
+      title: "Controls if contextual content (List feed) is displayed",
+      getValue: showContextualContent,
+    },
+  ],
+  [
+    "discoverystream.contextualContent.topics",
+    {
+      title: "CSV list of possible topics for the contextual content feed",
+      value: "",
+    },
+  ],
+  [
+    "discoverystream.contextualContent.detailedView",
+    {
+      title:
+        "Controls if cards in contextual content feed display meta information and images",
+      value: false,
     },
   ],
   [

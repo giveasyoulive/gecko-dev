@@ -5509,22 +5509,29 @@ struct ReturnCallTrampolineData {
 static ReturnCallTrampolineData MakeReturnCallTrampoline(MacroAssembler& masm) {
   uint32_t savedPushed = masm.framePushed();
 
-  // Build simple trampoline code: load the instance slot from the frame,
-  // restore FP, and return to prevous caller.
   ReturnCallTrampolineData data;
+
+  {
+#  if defined(JS_CODEGEN_ARM) || defined(JS_CODEGEN_ARM64)
+    AutoForbidPoolsAndNops afp(&masm, 1);
+#  elif defined(JS_CODEGEN_RISCV64)
+    BlockTrampolinePoolScope block_trampoline_pool(&masm, 1);
+#  endif
+
+    // Build simple trampoline code: load the instance slot from the frame,
+    // restore FP, and return to prevous caller.
 #  ifdef JS_CODEGEN_ARM
-  data.trampolineOffset = masm.currentOffset();
+    data.trampolineOffset = masm.currentOffset();
 #  else
-  masm.bind(&data.trampoline);
+    masm.bind(&data.trampoline);
 #  endif
 
-  masm.setFramePushed(
-      AlignBytes(wasm::FrameWithInstances::sizeOfInstanceFieldsAndShadowStack(),
-                 WasmStackAlignment));
+    masm.setFramePushed(AlignBytes(
+        wasm::FrameWithInstances::sizeOfInstanceFieldsAndShadowStack(),
+        WasmStackAlignment));
 
-#  ifdef ENABLE_WASM_TAIL_CALLS
-  masm.wasmMarkSlowCall();
-#  endif
+    masm.wasmMarkSlowCall();
+  }
 
   masm.loadPtr(
       Address(masm.getStackPointer(), WasmCallerInstanceOffsetBeforeCall),
@@ -6419,7 +6426,8 @@ void MacroAssembler::wasmReturnCallRef(
 }
 #endif
 
-void MacroAssembler::updateCallRefMetrics(const Register funcRef,
+void MacroAssembler::updateCallRefMetrics(size_t callRefIndex,
+                                          const Register funcRef,
                                           const Register scratch1,
                                           const Register scratch2) {
   MOZ_ASSERT(funcRef != scratch1);
@@ -6433,7 +6441,8 @@ void MacroAssembler::updateCallRefMetrics(const Register funcRef,
   // Emit a patchable mov32 which will load the offset of the
   // `CallRefMetrics` stored inside the `Instance::callRefMetrics_` array
   CodeOffset offsetOfCallRefOffset = move32WithPatch(scratch2);
-  append(wasm::CallRefMetricsPatch(offsetOfCallRefOffset.offset()));
+  callRefMetricsPatches()[callRefIndex].setOffset(
+      offsetOfCallRefOffset.offset());
 
   // Get a pointer to the `CallRefMetrics` for this call_ref
   loadPtr(Address(InstanceReg, wasm::Instance::offsetOfCallRefMetrics()),
@@ -6528,7 +6537,7 @@ void MacroAssembler::wasmClampTable64Index(Register64 index, Register out) {
   move64To32(index, out);
   jump(&ret);
   bind(&oob);
-  static_assert(wasm::MaxTableLength < UINT32_MAX);
+  static_assert(wasm::MaxTableElemsRuntime < UINT32_MAX);
   move32(Imm32(UINT32_MAX), out);
   bind(&ret);
 };
@@ -7633,7 +7642,8 @@ void MacroAssembler::emitPreBarrierFastPath(JSRuntime* rt, MIRType type,
 
   // Fold the adjustment for the fact that arenas don't start at the beginning
   // of the chunk into the offset to the chunk bitmap.
-  const size_t firstArenaAdjustment = gc::FirstArenaAdjustmentBits / CHAR_BIT;
+  const size_t firstArenaAdjustment =
+      gc::ChunkMarkBitmap::FirstThingAdjustmentBits / CHAR_BIT;
   const intptr_t offset =
       intptr_t(gc::ChunkMarkBitmapOffset) - intptr_t(firstArenaAdjustment);
 

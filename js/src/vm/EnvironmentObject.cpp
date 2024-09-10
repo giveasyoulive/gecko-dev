@@ -429,10 +429,6 @@ ModuleEnvironmentObject* ModuleEnvironmentObject::create(
 }
 
 #ifdef ENABLE_EXPLICIT_RESOURCE_MANAGEMENT
-// TODO: at the time of unflagging ENABLE_EXPLICIT_RESOURCE_MANAGEMENT
-// consider having a common base class for LexicalEnvironmentObject and
-// ModuleEnvironmentObject containing all the common code and also
-// align method names with that of DisposableStack (Bug 1907736).
 static ArrayObject* initialiseAndSetDisposeCapabilityHelper(
     JSContext* cx, JS::Handle<EnvironmentObject*> env, uint32_t slot) {
   JS::Value slotData = env->getReservedSlot(slot);
@@ -449,33 +445,19 @@ static ArrayObject* initialiseAndSetDisposeCapabilityHelper(
   return disposablesList;
 }
 
-ArrayObject* ModuleEnvironmentObject::getOrCreateDisposeCapability(
+ArrayObject* DisposableEnvironmentObject::getOrCreateDisposeCapability(
     JSContext* cx) {
-  Rooted<ModuleEnvironmentObject*> env(cx, this);
+  Rooted<DisposableEnvironmentObject*> env(cx, this);
   return initialiseAndSetDisposeCapabilityHelper(
       cx, env, DISPOSABLE_RESOURCE_STACK_SLOT);
 }
 
-JS::Value ModuleEnvironmentObject::getDisposables() {
+// TODO: The get & clear disposables function can be merged. (bug 1907736)
+JS::Value DisposableEnvironmentObject::getDisposables() {
   return getReservedSlot(DISPOSABLE_RESOURCE_STACK_SLOT);
 }
 
-void ModuleEnvironmentObject::clearDisposables() {
-  setReservedSlot(DISPOSABLE_RESOURCE_STACK_SLOT, UndefinedValue());
-}
-
-ArrayObject* LexicalEnvironmentObject::getOrCreateDisposeCapability(
-    JSContext* cx) {
-  Rooted<LexicalEnvironmentObject*> env(cx, this);
-  return initialiseAndSetDisposeCapabilityHelper(
-      cx, env, DISPOSABLE_RESOURCE_STACK_SLOT);
-}
-
-JS::Value LexicalEnvironmentObject::getDisposables() {
-  return getReservedSlot(DISPOSABLE_RESOURCE_STACK_SLOT);
-}
-
-void LexicalEnvironmentObject::clearDisposables() {
+void DisposableEnvironmentObject::clearDisposables() {
   setReservedSlot(DISPOSABLE_RESOURCE_STACK_SLOT, UndefinedValue());
 }
 #endif
@@ -3620,11 +3602,16 @@ bool js::CheckLexicalNameConflict(
   RootedId id(cx, NameToId(name));
   mozilla::Maybe<PropertyInfo> prop;
   bool shadowsExistingProperty = false;
+
+#ifndef NIGHTLY_BUILD
   if (varObj->is<GlobalObject>() &&
       varObj->as<GlobalObject>().isInVarNames(name)) {
     // ES 15.1.11 step 5.a
     redeclKind = "var";
-  } else if ((prop = lexicalEnv->lookup(cx, name))) {
+  } else
+#endif
+
+      if ((prop = lexicalEnv->lookup(cx, name))) {
     // ES 15.1.11 step 5.b
     redeclKind = prop->writable() ? "let" : "const";
   } else if (varObj->is<NativeObject>() &&
@@ -3658,7 +3645,7 @@ bool js::CheckLexicalNameConflict(
   if (shadowsExistingProperty && varObj->is<GlobalObject>()) {
     // Shadowing a configurable global property with a new lexical is one
     // of the rare ways to invalidate a GetGName stub.
-    varObj->as<GlobalObject>().bumpGenerationCount();
+    varObj->as<GlobalObject>().bumpGenerationCount(cx);
   }
 
   return true;
@@ -3764,11 +3751,13 @@ static bool InitGlobalOrEvalDeclarations(
           }
         }
 
+#ifndef NIGHTLY_BUILD
         if (varObj->is<GlobalObject>()) {
           if (!varObj->as<GlobalObject>().addToVarNames(cx, name)) {
             return false;
           }
         }
+#endif
 
         break;
       }
@@ -3842,11 +3831,13 @@ static bool InitHoistedFunctionDeclarations(JSContext* cx, HandleScript script,
         return false;
       }
 
+#ifndef NIGHTLY_BUILD
       if (varObj->is<GlobalObject>()) {
         if (!varObj->as<GlobalObject>().addToVarNames(cx, name)) {
           return false;
         }
       }
+#endif
 
       // Done processing this function.
       continue;
@@ -3873,11 +3864,13 @@ static bool InitHoistedFunctionDeclarations(JSContext* cx, HandleScript script,
         MOZ_ASSERT(propInfo.enumerable());
       }
 
+#ifndef NIGHTLY_BUILD
       // Careful: the presence of a shape, even one appearing to derive from
       // a variable declaration, doesn't mean it's in [[VarNames]].
       if (!varObj->as<GlobalObject>().addToVarNames(cx, name)) {
         return false;
       }
+#endif
     }
 
     /*

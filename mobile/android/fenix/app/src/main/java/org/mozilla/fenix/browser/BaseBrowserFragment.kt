@@ -824,6 +824,7 @@ abstract class BaseBrowserFragment :
                 title = ThemeManager.resolveAttributeColor(attribute = R.attr.textPrimary),
                 description = ThemeManager.resolveAttributeColor(attribute = R.attr.textSecondary),
                 background = ThemeManager.resolveAttributeColor(attribute = R.attr.layer1),
+                cancelText = ThemeManager.resolveAttributeColor(attribute = R.attr.textAccent),
                 confirmButton = ThemeManager.resolveAttributeColor(attribute = R.attr.actionPrimary),
                 passwordBox = ThemeManager.resolveAttributeColor(attribute = R.attr.layer2),
                 boxBorder = ThemeManager.resolveAttributeColor(attribute = R.attr.textDisabled),
@@ -848,7 +849,6 @@ abstract class BaseBrowserFragment :
             getCurrentTab()?.id,
             store,
             context,
-            bottomToolbarHeight,
         )
 
         shareDownloadsFeature.set(
@@ -1203,7 +1203,7 @@ abstract class BaseBrowserFragment :
                 store = requireComponents.core.store,
                 accountManager = requireComponents.backgroundServices.accountManager,
                 serverConfig = requireComponents.backgroundServices.serverConfig,
-                activityReceiver = { getActivity() },
+                activityRef = WeakReference(getActivity()),
             ),
             owner = this,
             view = view,
@@ -1367,7 +1367,6 @@ abstract class BaseBrowserFragment :
         sessionId: String?,
         store: BrowserStore,
         context: Context,
-        bottomToolbarHeight: Int,
     ) {
         val savedDownloadState =
             sharedViewModel.downloadDialogState[sessionId]
@@ -1400,7 +1399,6 @@ abstract class BaseBrowserFragment :
                 showCannotOpenFileError(binding.dynamicSnackbarContainer, context, it)
             },
             binding = binding.viewDynamicDownloadDialog,
-            bottomToolbarHeight = bottomToolbarHeight,
             onDismiss = onDismiss,
         ).show()
 
@@ -1532,7 +1530,6 @@ abstract class BaseBrowserFragment :
                                             getCurrentTab()?.id,
                                             context.components.core.store,
                                             context,
-                                            context.settings().getBottomToolbarHeight(context),
                                         )
                                     },
                                 )
@@ -1790,7 +1787,6 @@ abstract class BaseBrowserFragment :
                                             getCurrentTab()?.id,
                                             context.components.core.store,
                                             context,
-                                            context.settings().getBottomToolbarHeight(context),
                                         )
                                     },
                                 )
@@ -1825,6 +1821,8 @@ abstract class BaseBrowserFragment :
             owner = this,
             view = view,
         )
+
+        reinitializeEngineView()
     }
 
     private fun updateBrowserToolbarForMicrosurveyPrompt(browserToolbar: BrowserToolbar) {
@@ -1850,10 +1848,11 @@ abstract class BaseBrowserFragment :
                         context.components.settings.shouldShowMicrosurveyPrompt = true
                         currentMicrosurvey = microsurvey
 
+                        _bottomToolbarContainerView?.toolbarContainerView.let {
+                            binding.browserLayout.removeView(it)
+                        }
+
                         if (context.shouldAddNavigationBar()) {
-                            _bottomToolbarContainerView?.toolbarContainerView.let {
-                                binding.browserLayout.removeView(it)
-                            }
                             reinitializeNavBar()
                         } else {
                             initializeMicrosurveyPrompt()
@@ -1945,8 +1944,7 @@ abstract class BaseBrowserFragment :
                 browserToolbarView.expand()
 
                 val context = requireContext()
-                val bottomToolbarHeight = context.settings().getBottomToolbarHeight(context)
-                resumeDownloadDialogState(selectedTab.id, context.components.core.store, context, bottomToolbarHeight)
+                resumeDownloadDialogState(selectedTab.id, context.components.core.store, context)
                 it.announceForAccessibility(selectedTab.toDisplayTitle())
             }
         } else {
@@ -2305,8 +2303,8 @@ abstract class BaseBrowserFragment :
 
             FullScreenNotificationToast(
                 activity = activity,
-                gestureNavString = getString(R.string.exit_fullscreen_with_gesture),
-                backButtonString = getString(R.string.exit_fullscreen_with_back_button),
+                gestureNavString = getString(R.string.exit_fullscreen_with_gesture_short),
+                backButtonString = getString(R.string.exit_fullscreen_with_back_button_short),
                 GestureNavUtils,
             ).show()
 

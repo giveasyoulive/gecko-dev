@@ -521,9 +521,6 @@ namespace TuningDefaults {
 /* JSGC_MIN_EMPTY_CHUNK_COUNT */
 static const uint32_t MinEmptyChunkCount = 1;
 
-/* JSGC_MAX_EMPTY_CHUNK_COUNT */
-static const uint32_t MaxEmptyChunkCount = 30;
-
 /* JSGC_SLICE_TIME_BUDGET_MS */
 static const int64_t DefaultTimeBudgetMS = 0;  // Unlimited by default.
 
@@ -600,10 +597,12 @@ class GCSchedulingState {
 
   bool inHighFrequencyGCMode() const { return inHighFrequencyGCMode_; }
 
-  void updateHighFrequencyMode(const mozilla::TimeStamp& lastGCTime,
-                               const mozilla::TimeStamp& currentTime,
-                               const GCSchedulingTunables& tunables);
-  void updateHighFrequencyModeForReason(JS::GCReason reason);
+  void updateHighFrequencyModeOnGCStart(JS::GCOptions options,
+                                        const mozilla::TimeStamp& lastGCTime,
+                                        const mozilla::TimeStamp& currentTime,
+                                        const GCSchedulingTunables& tunables);
+  void updateHighFrequencyModeOnSliceStart(JS::GCOptions options,
+                                           JS::GCReason reason);
 };
 
 struct TriggerResult {

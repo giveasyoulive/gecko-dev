@@ -274,11 +274,11 @@ class nsBlockFrame : public nsContainerFrame {
                                     BaselineExportContext aExportContext) const;
 
   // MinISize() and PrefISize() are helpers to implement IntrinsicISize().
-  nscoord MinISize(gfxContext* aContext);
-  nscoord PrefISize(gfxContext* aContext);
+  nscoord MinISize(const mozilla::IntrinsicSizeInput& aInput);
+  nscoord PrefISize(const mozilla::IntrinsicSizeInput& aInput);
 
  public:
-  nscoord IntrinsicISize(gfxContext* aContext,
+  nscoord IntrinsicISize(const mozilla::IntrinsicSizeInput& aInput,
                          mozilla::IntrinsicISizeType aType) override;
 
   nsRect ComputeTightBounds(DrawTarget* aDrawTarget) const override;
@@ -436,6 +436,13 @@ class nsBlockFrame : public nsContainerFrame {
   nsLineBox* GetLineCursorForQuery() {
     return MaybeHasLineCursor() ? GetProperty(LineCursorPropertyQuery())
                                 : nullptr;
+  }
+
+  void SetLineCursorForDisplay(nsLineBox* aLine) {
+    MOZ_ASSERT(aLine, "must have a line");
+    MOZ_ASSERT(!mLines.empty(), "aLine isn't my line");
+    SetProperty(LineCursorPropertyDisplay(), aLine);
+    AddStateBits(NS_BLOCK_HAS_LINE_CURSOR);
   }
 
   nsLineBox* NewLineBox(nsIFrame* aFrame, bool aIsBlock) {

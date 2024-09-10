@@ -2,9 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-@namespace html url("http://www.w3.org/1999/xhtml");
-
 :root {
+  --tabstrip-inner-border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
   --tab-min-height: 36px;
   &[uidensity=compact] {
     --tab-min-height: 29px;
@@ -17,6 +16,7 @@
   --tab-border-radius: 4px;
   --tab-shadow-max-size: 6px;
   --tab-block-margin: 4px;
+  --tab-icon-end-margin: 5.5px;
   --tab-loading-fill: #0A84FF;
   --tab-hover-background-color: color-mix(in srgb, currentColor 11%, transparent);
   --tab-selected-textcolor: var(--toolbar-color);
@@ -133,13 +133,9 @@
     visibility: hidden;
   }
 
-  &[pinned] {
-    flex-shrink: 0;
-
-    #tabbrowser-tabs[positionpinnedtabs] > #tabbrowser-arrowscrollbox > & {
-      position: absolute !important;
-      display: block;
-    }
+  #tabbrowser-tabs[positionpinnedtabs] > #tabbrowser-arrowscrollbox > &[pinned] {
+    position: absolute !important;
+    display: block;
   }
 
   #tabbrowser-tabs[movingtab] > #tabbrowser-arrowscrollbox > &:is([selected], [multiselected]) {
@@ -163,7 +159,10 @@
 
 .tab-content {
   padding: 0 var(--inline-tab-padding);
-  min-width: 0;
+
+  &:not([pinned]) {
+    min-width: 0;
+  }
 
   /* We want the content to be centered for all vertical tabs in the collapsed state. */
   sidebar-main:not([expanded]) > #vertical-tabs > #tabbrowser-tabs &,
@@ -262,7 +261,7 @@
      - vertical but expanded
   */
   #tabbrowser-tabs:is(:not([orient="vertical"]), [orient="vertical"][expanded]) &:not([pinned]) {
-    margin-inline-end: 5.5px;
+    margin-inline-end: var(--tab-icon-end-margin);
   }
 }
 
@@ -272,7 +271,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    background-image: url("chrome://browser/skin/tabbrowser/hourglass.svg");
+    background-image: url("chrome://global/skin/icons/loading.svg");
     background-position: center;
     background-repeat: no-repeat;
     -moz-context-properties: fill;
@@ -795,36 +794,45 @@ tab-group {
 }
 
 #tabbrowser-tabs[orient="vertical"]:has(> #tabbrowser-arrowscrollbox[overflowing]) {
-  border-bottom: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-bottom: var(--tabstrip-inner-border);
 }
 
 #vertical-tabs-newtab-button {
-  display: flex;
-  height: var(--tab-min-height);
+  appearance: none;
+  font: message-box; /* match .tabbrowser-tab on macOS */
+  min-height: var(--tab-min-height);
   border-radius: var(--border-radius-medium);
-  padding: 0 var(--space-medium);
+  padding: 0 var(--inline-tab-padding);
+  margin-inline-end: var(--space-medium);
+
+  #tabbrowser-tabs:not([orient="vertical"]) > & {
+    display: none;
+  }
 
   &:hover {
     background-color: var(--tab-hover-background-color);
+    outline-color: var(--tab-hover-outline-color);
   }
 
   > .toolbarbutton-text {
     text-align: start;
-    padding-inline-start: var(--space-small);
+    padding-inline-start: var(--tab-icon-end-margin);
+
+    sidebar-main:not([expanded]) & {
+      display: none;
+    }
   }
 }
 
 sidebar-main:not([expanded]) > #vertical-tabs > #tabbrowser-tabs[orient="vertical"] .tabbrowser-tab {
   min-width: inherit;
   width: var(--collapsed-tab-width);
+  flex: none;
 }
 
 sidebar-main[expanded] > #vertical-tabs > #tabbrowser-tabs[orient="vertical"] .tabbrowser-tab {
   min-width: calc(100% - var(--space-medium));
-}
-
-#newtab-button-container {
-  display: none;
+  flex: none;
 }
 
 #vertical-tabs {
@@ -833,17 +841,33 @@ sidebar-main[expanded] > #vertical-tabs > #tabbrowser-tabs[orient="vertical"] .t
 
   &[visible] {
     display: flex;
-    /* make the scrollbars hug the side of the container */
-    margin-inline-end: -2px;
   }
 }
 
 #vertical-pinned-tabs-container {
-  display: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--collapsed-tab-width), auto));
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  /* Fit slightly more than 5 tabs + padding before overflowing */
+  max-height: 244px;
+  column-gap: 4px;
+  padding-bottom: var(--space-small);
+  margin-inline-end: var(--space-medium);
+
+  sidebar-main:not([expanded]) &:not(:empty) {
+    border-bottom: var(--tabstrip-inner-border);
+  }
+
+  #tabbrowser-tabs:not([orient="vertical"]) > & {
+    display: none;
+  }
 
   .tab-label-container {
     display: none;
   }
+
   .tab-background {
     border-radius: var(--border-radius-medium);
 
@@ -855,60 +879,28 @@ sidebar-main[expanded] > #vertical-tabs > #tabbrowser-tabs[orient="vertical"] .t
 
 #tabbrowser-tabs[orient="vertical"] {
   overflow: hidden;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   align-content: flex-start;
   grid-gap: var(--space-small);
 
   .tab-close-button {
     display: none;
   }
+
   .tab-content {
     /* Prevents the tab content in the vertical-pinned-tabs-container
     from becoming misaligned when in the expanded state. */
     justify-content: center;
   }
+
   .tab-background {
     border-radius: var(--border-radius-medium);
   }
-  #newtab-button-container {
-    display: flex;
-    border-top: 0;
-    margin-inline-end: var(--space-medium);
-    font-size: var(--urlbarView-small-font-size);
-    flex-direction: column;
-    padding-top: var(--space-small);
-
-    &[showborder] {
-      border-top: 1px solid color-mix(in srgb, currentColor 25%, transparent);
-    }
-
-    sidebar-main:not([expanded]) & {
-      .toolbarbutton-text {
-        display: none;
-      }
-    }
-  }
-  #vertical-pinned-tabs-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(var(--collapsed-tab-width), auto));
-    overflow-y: auto;
-    overflow-x: hidden;
-    scrollbar-width: thin;
-    /* Fit slightly more than 5 tabs + padding before overflowing */
-    max-height: 244px;
-    column-gap: 4px;
-    padding-inline-end: var(--space-medium);
-  }
 }
 
-sidebar-main[expanded] #tabbrowser-tabs[orient="vertical"] #newtab-button-container {
-  border-top: 0;
-}
-
-sidebar-main:not([expanded]) {
-  .tab-label-container {
-    display: none;
-  }
+sidebar-main:not([expanded]) .tab-label-container {
+  display: none;
 }
 
 sidebar-main[expanded] > #vertical-tabs > #tabbrowser-tabs[orient="vertical"] > #tabbrowser-arrowscrollbox > .tabbrowser-tab:is(:hover, [selected]) .tab-close-button {
@@ -952,7 +944,7 @@ sidebar-main[expanded] > #vertical-tabs > #tabbrowser-tabs[orient="vertical"] > 
   toolbarbutton:not(#firefox-view-button),
   toolbarpaletteitem:not(#wrapper-firefox-view-button)
 ) + #tabbrowser-tabs {
-  border-inline-start: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-inline-start: var(--tabstrip-inner-border);
   padding-inline-start: calc(var(--tab-overflow-pinned-tabs-width) + 2px);
   margin-inline-start: 2px;
 }
@@ -989,7 +981,7 @@ toolbar:not(#TabsToolbar) #firefox-view-button {
 
 #tabbrowser-tabs[hasadjacentnewtabbutton]:not([overflow]) ~ #new-tab-button,
 #tabbrowser-tabs[orient="vertical"] > #tabbrowser-arrowscrollbox > #tabbrowser-arrowscrollbox-periphery > #tabs-newtab-button,
-#tabbrowser-tabs[overflow] > #tabbrowser-arrowscrollbox > #tabbrowser-arrowscrollbox-periphery > #tabs-newtab-button,
+#tabbrowser-arrowscrollbox[overflowing] > #tabbrowser-arrowscrollbox-periphery > #tabs-newtab-button,
 #tabbrowser-tabs:not([hasadjacentnewtabbutton]) > #tabbrowser-arrowscrollbox > #tabbrowser-arrowscrollbox-periphery > #tabs-newtab-button,
 #TabsToolbar[customizing] #tabs-newtab-button {
   display: none;
@@ -999,19 +991,6 @@ toolbar:not(#TabsToolbar) #firefox-view-button {
 
 #alltabs-button {
   list-style-image: url(chrome://global/skin/icons/arrow-down.svg);
-
-  /* stylelint-disable-next-line media-query-no-invalid */
-  @media not (-moz-bool-pref: "browser.tabs.tabmanager.enabled") {
-    #tabbrowser-tabs:not([overflow], [hashiddentabs]) ~ & {
-      display: none;
-    }
-
-    #tabbrowser-tabs:not([overflow])[using-closing-tabs-spacer] ~ & {
-      /* temporary space to keep a tab's close button under the cursor */
-      display: flex;
-      visibility: hidden;
-    }
-  }
 
   #tabbrowser-tabs[hiddensoundplaying] ~ & > .toolbarbutton-badge-stack > .toolbarbutton-badge {
     background: transparent url(chrome://browser/skin/tabbrowser/tab-audio-playing-small.svg);
@@ -1133,7 +1112,7 @@ toolbar:not(#TabsToolbar) #firefox-view-button {
 
   @media (prefers-reduced-motion: reduce) {
     &[busy] {
-      list-style-image: url("chrome://browser/skin/tabbrowser/hourglass.svg");
+      list-style-image: url("chrome://global/skin/icons/loading.svg");
       -moz-context-properties: fill;
       fill: currentColor;
       opacity: 0.4;

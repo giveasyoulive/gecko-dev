@@ -17,12 +17,13 @@
 #include "mozilla/dom/Document.h"
 #include "mozilla/dom/WindowGlobalParent.h"
 #include "mozilla/net/CookieJarSettings.h"
-#include "mozilla/Telemetry.h"
+#include "mozilla/Unused.h"
 #include "mozIThirdPartyUtil.h"
 #include "nsContentUtils.h"
 #include "nsICookiePermission.h"
 #include "nsICookieService.h"
 #include "nsIEffectiveTLDService.h"
+#include "nsIHttpChannel.h"
 #include "nsIRedirectHistoryEntry.h"
 #include "nsIWebProgressListener.h"
 #include "nsNetUtil.h"
@@ -208,9 +209,9 @@ bool CookieCommons::CheckNameAndValueSize(const CookieStruct& aCookieData) {
 
 bool CookieCommons::CheckName(const CookieStruct& aCookieData) {
   const char illegalNameCharacters[] = {
-      0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C,
-      0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
-      0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x3B, 0x3D, 0x7F, 0x00};
+      0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x0A, 0x0B, 0x0C, 0x0D,
+      0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
+      0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x3B, 0x3D, 0x7F, 0x00};
 
   const auto* start = aCookieData.name().BeginReading();
   const auto* end = aCookieData.name().EndReading();
@@ -416,8 +417,8 @@ already_AddRefed<Cookie> CookieCommons::CreateCookieFromDocument(
   nsCString cookieString(aCookieString);
 
   aCookieParser.Parse(baseDomain, requireHostMatch, cookieStatus, cookieString,
-                      false, isForeignAndNotAddon, mustBePartitioned,
-                      aDocument->IsInPrivateBrowsing());
+                      EmptyCString(), false, isForeignAndNotAddon,
+                      mustBePartitioned, aDocument->IsInPrivateBrowsing());
 
   if (!aCookieParser.ContainsCookie()) {
     return nullptr;
@@ -776,25 +777,6 @@ bool CookieCommons::IsSchemeSupported(const nsACString& aScheme) {
          aScheme.Equals("file");
 }
 
-static bool ContainsUnicodeChars(const nsCString& str) {
-  const auto* start = str.BeginReading();
-  const auto* end = str.EndReading();
-
-  return std::find_if(start, end, [](unsigned char c) { return c >= 0x80; }) !=
-         end;
-}
-
-// static
-void CookieCommons::RecordUnicodeTelemetry(const CookieStruct& cookieData) {
-  auto label = Telemetry::LABELS_NETWORK_COOKIE_UNICODE_BYTE::none;
-  if (ContainsUnicodeChars(cookieData.name())) {
-    label = Telemetry::LABELS_NETWORK_COOKIE_UNICODE_BYTE::unicodeName;
-  } else if (ContainsUnicodeChars(cookieData.value())) {
-    label = Telemetry::LABELS_NETWORK_COOKIE_UNICODE_BYTE::unicodeValue;
-  }
-  Telemetry::AccumulateCategorical(label);
-}
-
 // static
 bool CookieCommons::ChipsLimitEnabledAndChipsCookie(
     const Cookie& cookie, dom::BrowsingContext* aBrowsingContext) {
@@ -842,6 +824,21 @@ void CookieCommons::ComposeCookieString(nsTArray<RefPtr<Cookie>>& aCookieList,
       }
     }
   }
+}
+
+// static
+void CookieCommons::GetServerDateHeader(nsIChannel* aChannel,
+                                        nsACString& aServerDateHeader) {
+  if (!aChannel) {
+    return;
+  }
+
+  nsCOMPtr<nsIHttpChannel> channel = do_QueryInterface(aChannel);
+  if (NS_WARN_IF(!channel)) {
+    return;
+  }
+
+  Unused << channel->GetResponseHeader("Date"_ns, aServerDateHeader);
 }
 
 }  // namespace net

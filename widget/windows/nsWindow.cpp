@@ -99,7 +99,6 @@
 #include "prtime.h"
 #include "prenv.h"
 
-#include "mozilla/WidgetTraceEvent.h"
 #include "nsContentUtils.h"
 #include "nsISupportsPrimitives.h"
 #include "nsITheme.h"
@@ -908,14 +907,6 @@ nsresult nsWindow::Create(nsIWidget* aParent, nsNativeWidget aNativeParent,
       !sFirstTopLevelWindowCreated) {
     sFirstTopLevelWindowCreated = true;
     mWnd = ConsumePreXULSkeletonUIHandle();
-    auto skeletonUIError = GetPreXULSkeletonUIErrorReason();
-    if (skeletonUIError) {
-      nsAutoString errorString(
-          GetPreXULSkeletonUIErrorString(skeletonUIError.value()));
-      Telemetry::ScalarSet(
-          Telemetry::ScalarID::STARTUP_SKELETON_UI_DISABLED_REASON,
-          errorString);
-    }
     if (mWnd) {
       MOZ_ASSERT(style == kPreXULSkeletonUIWindowStyle,
                  "The skeleton UI window style should match the expected "
@@ -4310,6 +4301,12 @@ bool nsWindow::DispatchMouseEvent(EventMessage aEventMessage, WPARAM wParam,
     mouseOrPointerEvent.pointerId = pointerId;
   }
 
+  if (aEventMessage == eContextMenu &&
+      aInputSource == MouseEvent_Binding::MOZ_SOURCE_TOUCH) {
+    MOZ_ASSERT(!aIsContextMenuKey);
+    mouseOrPointerEvent.mContextMenuTrigger = WidgetMouseEvent::eNormal;
+  }
+
   // Static variables used to distinguish simple-, double- and triple-clicks.
   static POINT sLastMousePoint = {0};
   static LONG sLastMouseDownTime = 0L;
@@ -4705,13 +4702,6 @@ LRESULT CALLBACK nsWindow::WindowProcInternal(HWND hWnd, UINT msg,
       WNDPROC prevWindowProc = (WNDPROC)::GetWindowLongPtr(hWnd, GWLP_USERDATA);
       return ::CallWindowProcW(prevWindowProc, hWnd, msg, wParam, lParam);
     }
-  }
-
-  if (msg == MOZ_WM_TRACE) {
-    // This is a tracer event for measuring event loop latency.
-    // See WidgetTraceEvent.cpp for more details.
-    mozilla::SignalTracerThread();
-    return 0;
   }
 
   // Get the window which caused the event and ask it to process the message
@@ -5451,10 +5441,15 @@ bool nsWindow::ProcessMessageInternal(UINT msg, WPARAM& wParam, LPARAM& lParam,
         pos = lParamToClient(lParam);
       }
 
-      result = DispatchMouseEvent(
-          eContextMenu, wParam, pos, contextMenukey,
-          contextMenukey ? MouseButton::ePrimary : MouseButton::eSecondary,
-          MOUSE_INPUT_SOURCE());
+      uint16_t inputSource = MOUSE_INPUT_SOURCE();
+      int16_t button =
+          (contextMenukey ||
+           inputSource == dom::MouseEvent_Binding::MOZ_SOURCE_TOUCH)
+              ? MouseButton::ePrimary
+              : MouseButton::eSecondary;
+
+      result = DispatchMouseEvent(eContextMenu, wParam, pos, contextMenukey,
+                                  button, inputSource);
       if (lParam != -1 && !result && mCustomNonClient &&
           mDraggableRegion.Contains(GET_X_LPARAM(pos), GET_Y_LPARAM(pos))) {
         // Blank area hit, throw up the system menu.

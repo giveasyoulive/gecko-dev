@@ -54,7 +54,8 @@ Realm::Realm(Compartment* comp, const JS::RealmOptions& options)
       debuggers_(zone_),
       allocatedDuringIncrementalGC_(zone_->isGCMarkingOrSweeping() ||
                                     zone_->isGCFinished()),
-      wasm(runtime_) {
+      wasm(runtime_),
+      generationCounterDependentScripts(runtime_) {
   runtime_->numRealms++;
 }
 
@@ -685,6 +686,12 @@ JS_PUBLIC_API JS::Handle<JSObject*> JS::GetRealmObjectPrototypeHandle(
 JS_PUBLIC_API JSObject* JS::GetRealmFunctionPrototype(JSContext* cx) {
   CHECK_THREAD(cx);
   return &cx->global()->getFunctionPrototype();
+}
+
+JS_PUBLIC_API JS::Handle<JSObject*> JS::GetRealmFunctionPrototypeHandle(
+    JSContext* cx) {
+  CHECK_THREAD(cx);
+  return cx->global()->getFunctionPrototypeHandle();
 }
 
 JS_PUBLIC_API JSObject* JS::GetRealmArrayPrototype(JSContext* cx) {

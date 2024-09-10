@@ -62,8 +62,8 @@ void js::wasm::ReportTier2ResultsOffThread(bool success,
                                            const ScriptedCaller& scriptedCaller,
                                            const UniqueChars& error,
                                            const UniqueCharsVector& warnings) {
-  // See comments in Module::PartialTier2CompileTaskImpl::runHelperThreadTask.
-  MOZ_ASSERT_IF(maybeFuncIndex.isSome(), !error && warnings.length() == 0);
+  // Due to behaviour of PartialTier2CompileTaskImpl::runHelperThreadTask.
+  MOZ_ASSERT_IF(maybeFuncIndex.isSome(), warnings.length() == 0);
 
   // Get context to describe this tier-2 task.
   UniqueChars context = Tier2ResultsContext(scriptedCaller);
@@ -587,10 +587,12 @@ bool Module::instantiateImportedTable(JSContext* cx, const TableDesc& td,
                              ToString(tableObj->table().indexType()));
     return false;
   }
-  if (!CheckLimits(cx, td.initialLength(), td.maximumLength(),
-                   /* declaredMin */ MaxTableLimitField,
-                   /* actualLength */ table.length(), table.maximum(),
-                   codeMeta().isAsmJS(), "Table")) {
+  if (!CheckLimits(cx, /*declaredMin=*/td.initialLength(),
+                   /*declaredMax=*/td.maximumLength(),
+                   /*defaultMax=*/MaxTableElemsValidation(td.indexType()),
+                   /*actualLength=*/uint64_t(table.length()),
+                   /*actualMax=*/table.maximum(), codeMeta().isAsmJS(),
+                   "Table")) {
     return false;
   }
 
@@ -610,7 +612,7 @@ bool Module::instantiateImportedTable(JSContext* cx, const TableDesc& td,
 bool Module::instantiateLocalTable(JSContext* cx, const TableDesc& td,
                                    WasmTableObjectVector* tableObjs,
                                    SharedTableVector* tables) const {
-  if (td.initialLength() > MaxTableLength) {
+  if (td.initialLength() > MaxTableElemsRuntime) {
     JS_ReportErrorNumberUTF8(cx, GetErrorMessage, nullptr,
                              JSMSG_WASM_TABLE_IMP_LIMIT);
     return false;

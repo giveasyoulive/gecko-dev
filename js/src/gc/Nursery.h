@@ -257,6 +257,10 @@ class Nursery {
 
   [[nodiscard]] inline bool addStringBuffer(JSLinearString* s);
 
+  [[nodiscard]] inline bool addExtensibleStringBuffer(
+      JSLinearString* s, mozilla::StringBuffer* buffer);
+  inline void removeExtensibleStringBuffer(JSLinearString* s);
+
   size_t sizeOfMallocedBuffers(mozilla::MallocSizeOf mallocSizeOf) const;
 
   // Wasm "trailer" (C++-heap-allocated) blocks.
@@ -420,6 +424,8 @@ class Nursery {
            (maxChunkCount() - currentChunk() - 1) * gc::ChunkSize;
   }
 
+  inline void addMallocedBufferBytes(size_t nbytes);
+
   // Calculate the promotion rate of the most recent minor GC.
   // The valid_for_tenuring parameter is used to return whether this
   // promotion rate is accurate enough (the nursery was full enough) to be
@@ -515,6 +521,8 @@ class Nursery {
 
   void clearMapAndSetNurseryRanges();
   void sweepMapAndSetObjects();
+
+  void sweepStringsWithBuffer();
 
   // Allocate a buffer for a given zone, using the nursery if possible.
   void* allocateBuffer(JS::Zone* zone, size_t nbytes);
@@ -733,6 +741,14 @@ class Nursery {
   using StringAndBufferVector =
       JS::GCVector<StringAndBuffer, 8, SystemAllocPolicy>;
   StringAndBufferVector stringBuffers_;
+
+  // Like stringBuffers_, but for extensible strings for flattened ropes. This
+  // requires a HashMap instead of a Vector because we need to remove the entry
+  // when transferring the buffer to a new extensible string during flattening.
+  using ExtensibleStringBuffers =
+      HashMap<JSLinearString*, mozilla::StringBuffer*,
+              js::PointerHasher<JSLinearString*>, js::SystemAllocPolicy>;
+  ExtensibleStringBuffers extensibleStringBuffers_;
 
   // List of StringBuffers to release off-thread.
   using StringBufferVector =

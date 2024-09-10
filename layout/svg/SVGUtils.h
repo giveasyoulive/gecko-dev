@@ -258,9 +258,8 @@ class SVGUtils final {
   /*
    * Returns whether the frame is transformed and what those transforms are.
    */
-  static bool IsSVGTransformed(const nsIFrame* aFrame,
-                               gfx::Matrix* aOwnTransform,
-                               gfx::Matrix* aFromParentTransform);
+  static bool GetParentSVGTransforms(const nsIFrame* aFrame,
+                                     gfx::Matrix* aFromParentTransform);
 
   /**
    * Notify the descendants of aFrame of a change to one of their ancestors
@@ -619,14 +618,6 @@ class SVGUtils final {
    * its usual dev pixels to SVG user units/CSS px to keep the SVG code happy.
    */
   static gfxMatrix GetCSSPxToDevPxMatrix(const nsIFrame* aNonSVGFrame);
-
-  /**
-   * It is a replacement of
-   * SVGElement::PrependLocalTransformsTo(eUserSpaceToParent).
-   * If no CSS transform is involved, they should behave exactly the same;
-   * if there are CSS transforms, this one will take them into account
-   * while SVGElement::PrependLocalTransformsTo won't.
-   */
   static gfxMatrix GetTransformMatrixInUserSpace(const nsIFrame* aFrame);
 };
 

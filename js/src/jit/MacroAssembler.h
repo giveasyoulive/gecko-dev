@@ -3791,7 +3791,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // MUST equal `ptrScratch`, and that register will be updated based on
   // conditions listed below (where it is only mentioned as `ptr`).
 
-  // `ptr` will be updated if access.offset() != 0 or access.type() ==
+  // `ptr` will be updated if access.offset32() != 0 or access.type() ==
   // Scalar::Int64.
   void wasmLoad(const wasm::MemoryAccessDesc& access, Register memoryBase,
                 Register ptr, Register ptrScratch, AnyRegister output)
@@ -3986,8 +3986,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
                          const ReturnCallAdjustmentInfo& retCallInfo);
 #endif  // ENABLE_WASM_TAIL_CALLS
 
-  void updateCallRefMetrics(const Register funcRef, const Register scratch1,
-                            const Register scratch2);
+  void updateCallRefMetrics(size_t callRefIndex, const Register funcRef,
+                            const Register scratch1, const Register scratch2);
 
   // WasmTableCallIndexReg must contain the index of the indirect call.
   // This is for asm.js calls only.

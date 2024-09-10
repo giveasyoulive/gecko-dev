@@ -825,8 +825,14 @@ nsresult HTMLEditor::FocusedElementOrDocumentBecomesNotEditable(
     aHTMLEditor->mHasFocus = false;
     aHTMLEditor->mIsInDesignMode = false;
 
-    const RefPtr<Element> focusedElement =
-        nsFocusManager::GetFocusedElementStatic();
+    RefPtr<Element> focusedElement = nsFocusManager::GetFocusedElementStatic();
+    if (focusedElement && !focusedElement->IsInComposedDoc()) {
+      // nsFocusManager may keep storing the focused element even after
+      // disconnected from the tree, but HTMLEditor cannot work with editable
+      // nodes not in a composed document.  Therefore, we should treat no
+      // focused element in the case.
+      focusedElement = nullptr;
+    }
     TextControlElement* const focusedTextControlElement =
         TextControlElement::FromNodeOrNull(focusedElement);
     if ((focusedElement && focusedElement->IsEditable() &&
@@ -854,14 +860,17 @@ nsresult HTMLEditor::FocusedElementOrDocumentBecomesNotEditable(
   // If the element becomes not editable without focus change, IMEStateManager
   // does not have a chance to disable IME.  Therefore, (even if we fail to
   // handle the emulated blur/focus above,) we should notify IMEStateManager of
-  // the editing state change.
-  RefPtr<Element> focusedElement = nsFocusManager::GetFocusedElementStatic();
-  RefPtr<nsPresContext> presContext =
-      focusedElement ? focusedElement->GetPresContext(
-                           Element::PresContextFor::eForComposedDoc)
-                     : aDocument.GetPresContext();
-  if (presContext) {
-    IMEStateManager::MaybeOnEditableStateDisabled(*presContext, focusedElement);
+  // the editing state change.  Note that if the window of the HTMLEditor has
+  // already lost focus, we don't need to do that and we should not touch the
+  // other windows.
+  if (const RefPtr<nsPresContext> presContext = aDocument.GetPresContext()) {
+    const RefPtr<Element> focusedElementInDocument =
+        Element::FromNodeOrNull(aDocument.GetUnretargetedFocusedContent());
+    MOZ_ASSERT_IF(focusedElementInDocument,
+                  focusedElementInDocument->GetPresContext(
+                      Element::PresContextFor::eForComposedDoc));
+    IMEStateManager::MaybeOnEditableStateDisabled(*presContext,
+                                                  focusedElementInDocument);
   }
 
   return rv;
@@ -878,10 +887,13 @@ nsresult HTMLEditor::OnBlur(const EventTarget* aEventTarget) {
                       ? "true"
                       : "false")
                : "N/A"));
+  const Element* eventTargetAsElement =
+      Element::FromEventTargetOrNull(aEventTarget);
 
   // If another element already has focus, we should not maintain the selection
   // because we may not have the rights doing it.
-  if (nsFocusManager::GetFocusedElementStatic()) {
+  const Element* focusedElement = nsFocusManager::GetFocusedElementStatic();
+  if (focusedElement && focusedElement != eventTargetAsElement) {
     // XXX If we had focus and new focused element is a text control, we may
     // need to notify focus of its TextEditor...
     mIsInDesignMode = false;
@@ -892,7 +904,8 @@ nsresult HTMLEditor::OnBlur(const EventTarget* aEventTarget) {
   // If we're in the designMode and blur occurs, the target must be the document
   // node.  If a blur event is fired and the target is an element, it must be
   // delayed blur event at initializing the `HTMLEditor`.
-  if (mIsInDesignMode && Element::FromEventTargetOrNull(aEventTarget)) {
+  if (mIsInDesignMode && eventTargetAsElement &&
+      eventTargetAsElement->IsInComposedDoc()) {
     return NS_OK;
   }
 
@@ -4596,7 +4609,9 @@ void HTMLEditor::DoContentInserted(nsIContent* aChild,
   }
 
   if (ShouldReplaceRootElement()) {
-    UpdateRootElement();
+    // Forget maybe disconnected root element right now because nobody should
+    // work with it.
+    mRootElement = nullptr;
     if (mPendingRootElementUpdatedRunner) {
       return;
     }
@@ -4669,7 +4684,11 @@ MOZ_CAN_RUN_SCRIPT_BOUNDARY void HTMLEditor::ContentRemoved(
     return;
   }
 
-  if (SameCOMIdentity(aChild, mRootElement)) {
+  // FYI: mRootElement may be the <body> of the document or the root element.
+  // Therefore, we don't need to check it across shadow DOM boundaries.
+  if (mRootElement && mRootElement->IsInclusiveDescendantOf(aChild)) {
+    // Forget the disconnected root element right now because nobody should work
+    // with it.
     mRootElement = nullptr;
     if (mPendingRootElementUpdatedRunner) {
       return;
@@ -7096,30 +7115,32 @@ void HTMLEditor::NotifyRootChanged() {
   }
 
   UpdateRootElement();
-  if (!mRootElement) {
-    return;
+
+  if (MOZ_LIKELY(mRootElement)) {
+    rv = MaybeCollapseSelectionAtFirstEditableNode(false);
+    if (NS_FAILED(rv)) {
+      NS_WARNING(
+          "HTMLEditor::MaybeCollapseSelectionAtFirstEditableNode(false) "
+          "failed, "
+          "but ignored");
+      return;
+    }
+
+    // When this editor has focus, we need to reset the selection limiter to
+    // new root.  Otherwise, that is going to be done when this gets focus.
+    nsCOMPtr<nsINode> node = GetFocusedNode();
+    if (node) {
+      DebugOnly<nsresult> rvIgnored = InitializeSelection(*node);
+      NS_WARNING_ASSERTION(
+          NS_SUCCEEDED(rvIgnored),
+          "EditorBase::InitializeSelection() failed, but ignored");
+    }
+
+    SyncRealTimeSpell();
   }
 
-  rv = MaybeCollapseSelectionAtFirstEditableNode(false);
-  if (NS_FAILED(rv)) {
-    NS_WARNING(
-        "HTMLEditor::MaybeCollapseSelectionAtFirstEditableNode(false) "
-        "failed, "
-        "but ignored");
-    return;
-  }
-
-  // When this editor has focus, we need to reset the selection limiter to
-  // new root.  Otherwise, that is going to be done when this gets focus.
-  nsCOMPtr<nsINode> node = GetFocusedNode();
-  if (node) {
-    DebugOnly<nsresult> rvIgnored = InitializeSelection(*node);
-    NS_WARNING_ASSERTION(
-        NS_SUCCEEDED(rvIgnored),
-        "EditorBase::InitializeSelection() failed, but ignored");
-  }
-
-  SyncRealTimeSpell();
+  RefPtr<Element> newRootElement(mRootElement);
+  IMEStateManager::OnUpdateHTMLEditorRootElement(*this, newRootElement);
 }
 
 Element* HTMLEditor::GetBodyElement() const {

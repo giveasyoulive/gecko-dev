@@ -105,6 +105,7 @@
 #include "mozilla/dom/FileSystemSecurity.h"
 #include "mozilla/dom/GeolocationBinding.h"
 #include "mozilla/dom/GeolocationPositionError.h"
+#include "mozilla/dom/GeolocationSystem.h"
 #include "mozilla/dom/GetFilesHelper.h"
 #include "mozilla/dom/IPCBlobUtils.h"
 #include "mozilla/dom/JSActorService.h"
@@ -4463,8 +4464,7 @@ ContentParent::AllocPExternalHelperAppParent(
     const uint32_t& aContentDispositionHint,
     const nsAString& aContentDispositionFilename, const bool& aForceSave,
     const int64_t& aContentLength, const bool& aWasFileChannel,
-    nsIURI* aReferrer, const MaybeDiscarded<BrowsingContext>& aContext,
-    const bool& aShouldCloseWindow) {
+    nsIURI* aReferrer, const MaybeDiscarded<BrowsingContext>& aContext) {
   RefPtr<ExternalHelperAppParent> parent = new ExternalHelperAppParent(
       uri, aContentLength, aWasFileChannel, aContentDisposition,
       aContentDispositionHint, aContentDispositionFilename);
@@ -4478,12 +4478,10 @@ mozilla::ipc::IPCResult ContentParent::RecvPExternalHelperAppConstructor(
     const uint32_t& aContentDispositionHint,
     const nsAString& aContentDispositionFilename, const bool& aForceSave,
     const int64_t& aContentLength, const bool& aWasFileChannel,
-    nsIURI* aReferrer, const MaybeDiscarded<BrowsingContext>& aContext,
-    const bool& aShouldCloseWindow) {
+    nsIURI* aReferrer, const MaybeDiscarded<BrowsingContext>& aContext) {
   BrowsingContext* context = aContext.IsDiscarded() ? nullptr : aContext.get();
   if (!static_cast<ExternalHelperAppParent*>(actor)->Init(
-          loadInfoArgs, aMimeContentType, aForceSave, aReferrer, context,
-          aShouldCloseWindow)) {
+          loadInfoArgs, aMimeContentType, aForceSave, aReferrer, context)) {
     return IPC_FAIL(this, "Init failed.");
   }
   return IPC_OK();
@@ -7898,6 +7896,26 @@ IPCResult ContentParent::RecvGetSystemIcon(nsIURI* aURI,
       "This message is currently implemented only on GTK and Windows "
       "platforms");
 #endif
+}
+
+IPCResult ContentParent::RecvGetSystemGeolocationPermissionBehavior(
+    GetSystemGeolocationPermissionBehaviorResolver&& aResolver) {
+  aResolver(Geolocation::GetLocationOSPermission());
+  return IPC_OK();
+}
+
+IPCResult ContentParent::RecvRequestGeolocationPermissionFromUser(
+    const MaybeDiscardedBrowsingContext& aBrowsingContext,
+    RequestGeolocationPermissionFromUserResolver&& aResolver) {
+  if (MOZ_UNLIKELY(aBrowsingContext.IsNullOrDiscarded())) {
+    aResolver(GeolocationPermissionStatus::Error);
+    return IPC_OK();
+  }
+  RefPtr<BrowsingContext> browsingContext = aBrowsingContext.get();
+
+  Geolocation::ReallowWithSystemPermissionOrCancel(browsingContext,
+                                                   std::move(aResolver));
+  return IPC_OK();
 }
 
 #ifdef FUZZING_SNAPSHOT

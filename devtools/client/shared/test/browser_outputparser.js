@@ -79,7 +79,7 @@ function makeColorTest(name, value, segments) {
 
       // prettier-ignore
       result.expected +=
-        `<span data-color="${segment.name}">` +
+        `<span data-color="${segment.name}" class="color-swatch-container">` +
           `<span ${buttonAttrString}></span>`+
           `<span>${segment.name}</span>` +
         `</span>`;
@@ -315,6 +315,43 @@ function testParseCssProperty(doc, parser) {
         ")",
       ]
     ),
+
+    {
+      desc: "--a: (min-width:680px)",
+      name: "--a",
+      value: "(min-width:680px)",
+      expected: "(min-width:680px)",
+    },
+
+    {
+      desc: "Interactive color swatch",
+      name: "color",
+      value: "gold",
+      expected:
+        // prettier-ignore
+        `<span data-color="gold" class="color-swatch-container">` +
+          `<span class="test-class" style="background-color:gold" tabindex="0" role="button"></span>` +
+          `<span>gold</span>` +
+        `</span>`,
+      parserExtraOptions: {
+        colorSwatchReadOnly: false,
+      },
+    },
+
+    {
+      desc: "Read-only color swatch",
+      name: "color",
+      value: "gold",
+      expected:
+        // prettier-ignore
+        `<span data-color="gold" class="color-swatch-container">` +
+          `<span class="test-class" style="background-color:gold"></span>` +
+          `<span>gold</span>` +
+        `</span>`,
+      parserExtraOptions: {
+        colorSwatchReadOnly: true,
+      },
+    },
   ];
 
   const target = doc.querySelector("div");
@@ -325,6 +362,7 @@ function testParseCssProperty(doc, parser) {
 
     const frag = parser.parseCssProperty(test.name, test.value, {
       colorSwatchClass: COLOR_TEST_CLASS,
+      ...(test.parserExtraOptions || {}),
     });
 
     target.appendChild(frag);
@@ -614,9 +652,9 @@ function testParseShape(doc, parser) {
   for (const { desc, definition, property = "clip-path", spanCount } of tests) {
     info(desc);
     const frag = parser.parseCssProperty(property, definition, {
-      shapeClass: "ruleview-shape",
+      shapeClass: "inspector-shape",
     });
-    const spans = frag.querySelectorAll(".ruleview-shape-point");
+    const spans = frag.querySelectorAll(".inspector-shape-point");
     is(spans.length, spanCount, desc + " span count");
     is(frag.textContent, definition, desc + " text content");
   }
@@ -631,7 +669,7 @@ function testParseVariable(doc, parser) {
         // prettier-ignore
         '<span data-color="chartreuse">' +
           "<span>var(" +
-            '<span data-variable="--seen = chartreuse">--seen</span>)' +
+            '<span data-variable="chartreuse">--seen</span>)' +
           "</span>" +
         "</span>",
     },
@@ -643,7 +681,7 @@ function testParseVariable(doc, parser) {
       expected:
         // prettier-ignore
         "<span>var(" +
-          '<span data-variable="--seen = var(--base)" data-variable-computed="1em">--seen</span>)' +
+          '<span data-variable="var(--base)" data-variable-computed="1em">--seen</span>)' +
         "</span>",
     },
     {
@@ -662,7 +700,7 @@ function testParseVariable(doc, parser) {
         // prettier-ignore
         '<span data-color="chartreuse">' +
           "<span>var(" +
-            '<span data-variable="--seen = chartreuse">--seen</span>,' +
+            '<span data-variable="chartreuse">--seen</span>,' +
             '<span class="unmatched-class"> ' +
               '<span data-color="seagreen">' +
                 "<span>seagreen</span>" +
@@ -681,7 +719,7 @@ function testParseVariable(doc, parser) {
           "<span> " +
             '<span data-color="chartreuse">' +
               "<span>var(" +
-                '<span data-variable="--seen = chartreuse">--seen</span>)' +
+                '<span data-variable="chartreuse">--seen</span>)' +
               "</span>" +
             "</span>" +
           "</span>)" +
@@ -693,13 +731,13 @@ function testParseVariable(doc, parser) {
       expected:
         // prettier-ignore
         `color-mix(in sgrb, ` +
-        `<span data-color="yellow">` +
+        `<span data-color="yellow" class="color-swatch-container">` +
           `<span class="test-class" style="background-color:yellow" tabindex="0" role="button" data-color-function="color-mix">` +
           `</span>` +
-          `<span>var(<span data-variable="--x = yellow">--x</span>)</span>` +
+          `<span>var(<span data-variable="yellow">--x</span>)</span>` +
         `</span>` +
         `, ` +
-        `<span data-color="purple">` +
+        `<span data-color="purple" class="color-swatch-container">` +
           `<span class="test-class" style="background-color:purple" tabindex="0" role="button" data-color-function="color-mix">` +
           `</span>` +
           `<span>purple</span>` +
@@ -715,16 +753,16 @@ function testParseVariable(doc, parser) {
       expected:
         // prettier-ignore
         `light-dark(` +
-        `<span data-color="yellow">` +
+        `<span data-color="yellow" class="color-swatch-container">` +
           `<span class="test-class" style="background-color:yellow" tabindex="0" role="button" data-color-function="light-dark">` +
           `</span>` +
-          `<span>var(<span data-variable="--light = yellow">--light</span>)</span>` +
+          `<span>var(<span data-variable="yellow">--light</span>)</span>` +
         `</span>` +
         `, ` +
-        `<span data-color="gold">` +
+        `<span data-color="gold" class="color-swatch-container">` +
           `<span class="test-class" style="background-color:gold" tabindex="0" role="button" data-color-function="light-dark">` +
           `</span>` +
-          `<span>var(<span data-variable="--dark = gold">--dark</span>)</span>` +
+          `<span>var(<span data-variable="gold">--dark</span>)</span>` +
         `</span>` +
         `)`,
       parserExtraOptions: {
@@ -741,7 +779,7 @@ function testParseVariable(doc, parser) {
         '1px solid ' +
         '<span data-color="chartreuse">' +
           "<span>var(" +
-            '<span data-variable="--seen = chartreuse">--seen</span>,' +
+            '<span data-variable="chartreuse">--seen</span>,' +
             '<span class="unmatched-class"> ' +
               '<span data-color="seagreen">' +
                 "<span>seagreen</span>" +
@@ -775,10 +813,10 @@ function testParseVariable(doc, parser) {
         '<span data-color="rgba(255, 0, 0, 0.5)">' +
           "<span>rgba("+
             "<span>" +
-              'var(<span data-variable="--r = 255">--r</span>)' +
+              'var(<span data-variable="255">--r</span>)' +
             "</span>, 0, 0, " +
             "<span>" +
-              'var(<span data-variable="--a = 0.5">--a</span>)' +
+              'var(<span data-variable="0.5">--a</span>)' +
             "</span>" +
           ")</span>" +
         "</span>",
@@ -792,11 +830,11 @@ function testParseVariable(doc, parser) {
           "<span>rgba("+
             "from " +
             "<span>" +
-              'var(<span data-variable="--base = red">--base</span>)' +
+              'var(<span data-variable="red">--base</span>)' +
             "</span> r g 0 / " +
             "calc(" +
             "<span>" +
-              'var(<span data-variable="--a = 0.8">--a</span>)' +
+              'var(<span data-variable="0.8">--a</span>)' +
             "</span>" +
             " * 0.5)" +
           ")</span>" +
@@ -849,7 +887,7 @@ function testParseVariable(doc, parser) {
         '<span data-color="chartreuse">' +
           "<span>var(" +
             '<span ' +
-              'data-variable="--registered = chartreuse" ' +
+              'data-variable="chartreuse" ' +
               'data-registered-property-initial-value="hotpink" ' +
               'data-registered-property-syntax="<color>" ' +
               'data-registered-property-inherits="true"' +
@@ -873,7 +911,7 @@ function testParseVariable(doc, parser) {
         '<span data-color="chartreuse">' +
           "<span>var(" +
             '<span ' +
-              'data-variable="--registered-universal = chartreuse" ' +
+              'data-variable="chartreuse" ' +
               'data-registered-property-syntax="*" ' +
               'data-registered-property-inherits="false"' +
             '>--registered-universal</span>)' +
@@ -889,7 +927,7 @@ function testParseVariable(doc, parser) {
         isDarkColorScheme: false,
       },
       expected:
-        '<span>var(<span data-variable="--x = light-dark(red, blue)">--x</span>)</span>',
+        '<span>var(<span data-variable="light-dark(red, blue)">--x</span>)</span>',
     },
     {
       text: "var(--x)",
@@ -903,7 +941,7 @@ function testParseVariable(doc, parser) {
         // prettier-ignore
         '<span data-color="color-mix(in srgb, red 50%, blue)">' +
           '<span>var(' +
-            '<span data-variable="--x = color-mix(in srgb, red 50%, blue)">--x</span>' +
+            '<span data-variable="color-mix(in srgb, red 50%, blue)">--x</span>' +
           ')</span>' +
         '</span>',
     },
@@ -915,7 +953,7 @@ function testParseVariable(doc, parser) {
       expected:
         // prettier-ignore
         "<span>var(" +
-          '<span data-variable="--refers-empty = var(--empty)" data-variable-computed="">--refers-empty</span>)' +
+          '<span data-variable="var(--empty)" data-variable-computed="">--refers-empty</span>)' +
         "</span>",
     },
     {
@@ -930,7 +968,7 @@ function testParseVariable(doc, parser) {
             `hsl(50, 70%, ` +
             `<span>` +
               `var(` +
-                `<span data-variable="--foo = 40%">--foo</span>` +
+                `<span data-variable="40%">--foo</span>` +
               `)` +
             `</span>)` +
           `</span>` +
@@ -947,7 +985,7 @@ function testParseVariable(doc, parser) {
         `<span data-color="hsl(50, 70%, 40%)">` +
           `<span>` +
             `var(` +
-              `<span data-variable="--bar = hsl(50, 70%, var(--foo))" data-variable-computed="hsl(50, 70%, 40%)">--bar</span>` +
+              `<span data-variable="hsl(50, 70%, var(--foo))" data-variable-computed="hsl(50, 70%, 40%)">--bar</span>` +
             `)` +
           `</span>` +
         `</span>`,
@@ -965,7 +1003,7 @@ function testParseVariable(doc, parser) {
         `<span data-color="hsl(10, 100%, 50%)">` +
           `<span>` +
             `var(` +
-              `<span data-variable="--primary = hsl(10, 100%, var(--fur))" data-variable-computed="hsl(10, 100%, 50%)">--primary</span>` +
+              `<span data-variable="hsl(10, 100%, var(--fur))" data-variable-computed="hsl(10, 100%, 50%)">--primary</span>` +
             `)` +
           `</span>` +
         `</span>`,
@@ -984,13 +1022,13 @@ function testParseVariable(doc, parser) {
           `<span>oklch(` +
             `<span>` +
               `var(` +
-                `<span data-variable="--fur = var(--baz)" data-variable-computed="10">--fur</span>` +
+                `<span data-variable="var(--baz)" data-variable-computed="10">--fur</span>` +
               `)` +
             `</span>` +
             ` 20 ` +
             `<span>` +
               `var(` +
-                `<span data-variable="--boo = 30">--boo</span>` +
+                `<span data-variable="30">--boo</span>` +
               `)` +
             `</span>` +
           `)</span>` +
@@ -1254,11 +1292,11 @@ function testParseLightDark(doc, parser) {
       expected:
         // prettier-ignore
         `light-dark(` +
-        `<span data-color="red">` +
+        `<span data-color="red" class="color-swatch-container">` +
           `<span class="test-class" style="background-color:red" tabindex="0" role="button" data-color-function="light-dark"></span>` +
           `<span>red</span>` +
         `</span>, ` +
-        `<span data-color="blue">` +
+        `<span data-color="blue" class="color-swatch-container">` +
           `<span class="test-class" style="background-color:blue" tabindex="0" role="button" data-color-function="light-dark"></span>` +
           `<span>blue</span>` +
         `</span>` +
@@ -1272,11 +1310,11 @@ function testParseLightDark(doc, parser) {
       expected:
         // prettier-ignore
         `light-dark(` +
-        `<span data-color="red">` +
+        `<span data-color="red" class="color-swatch-container">` +
           `<span class="test-class" style="background-color:red" tabindex="0" role="button" data-color-function="light-dark"></span>` +
           `<span>red</span>` +
         `</span>, ` +
-        `<span data-color="blue" class="unmatched-class">` +
+        `<span data-color="blue" class="color-swatch-container unmatched-class">` +
           `<span class="test-class" style="background-color:blue" tabindex="0" role="button" data-color-function="light-dark"></span>` +
           `<span>blue</span>` +
         `</span>` +
@@ -1290,11 +1328,11 @@ function testParseLightDark(doc, parser) {
       expected:
         // prettier-ignore
         `light-dark(` +
-        `<span data-color="red" class="unmatched-class">` +
+        `<span data-color="red" class="color-swatch-container unmatched-class">` +
           `<span class="test-class" style="background-color:red" tabindex="0" role="button" data-color-function="light-dark"></span>` +
           `<span>red</span>` +
         `</span>, ` +
-        `<span data-color="blue">` +
+        `<span data-color="blue" class="color-swatch-container">` +
           `<span class="test-class" style="background-color:blue" tabindex="0" role="button" data-color-function="light-dark"></span>` +
           `<span>blue</span>` +
         `</span>` +
@@ -1308,11 +1346,11 @@ function testParseLightDark(doc, parser) {
       expected:
         // prettier-ignore
         `1px solid light-dark(` +
-        `<span data-color="red">` +
+        `<span data-color="red" class="color-swatch-container">` +
           `<span class="test-class" style="background-color:red" tabindex="0" role="button" data-color-function="light-dark"></span>` +
           `<span>red</span>` +
         `</span>, ` +
-        `<span data-color="blue" class="unmatched-class">` +
+        `<span data-color="blue" class="color-swatch-container unmatched-class">` +
           `<span class="test-class" style="background-color:blue" tabindex="0" role="button" data-color-function="light-dark"></span>` +
           `<span>blue</span>` +
         `</span>` +
@@ -1326,11 +1364,11 @@ function testParseLightDark(doc, parser) {
       expected:
         // prettier-ignore
         `1px solid light-dark(` +
-        `<span data-color="red" class="unmatched-class">` +
+        `<span data-color="red" class="color-swatch-container unmatched-class">` +
           `<span class="test-class" style="background-color:red" tabindex="0" role="button" data-color-function="light-dark"></span>` +
           `<span>red</span>` +
         `</span>, ` +
-        `<span data-color="blue">` +
+        `<span data-color="blue" class="color-swatch-container">` +
           `<span class="test-class" style="background-color:blue" tabindex="0" role="button" data-color-function="light-dark"></span>` +
           `<span>blue</span>` +
         `</span>` +
@@ -1347,21 +1385,21 @@ function testParseLightDark(doc, parser) {
         `linear-gradient(` +
           `<span data-angle="45deg"><span>45deg</span></span>, ` +
           `light-dark(` +
-            `<span data-color="red">` +
+            `<span data-color="red" class="color-swatch-container">` +
               `<span class="test-class" style="background-color:red" tabindex="0" role="button" data-color-function="light-dark"></span>`+
               `<span>red</span>`+
             `</span>, `+
-            `<span data-color="blue" class="unmatched-class">` +
+            `<span data-color="blue" class="color-swatch-container unmatched-class">` +
               `<span class="test-class" style="background-color:blue" tabindex="0" role="button" data-color-function="light-dark"></span>` +
               `<span>blue</span>` +
             `</span>` +
           `), ` +
           `light-dark(` +
-            `<span data-color="pink">` +
+            `<span data-color="pink" class="color-swatch-container">` +
               `<span class="test-class" style="background-color:pink" tabindex="0" role="button" data-color-function="light-dark"></span>` +
               `<span>pink</span>` +
             `</span>, ` +
-            `<span data-color="cyan" class="unmatched-class">` +
+            `<span data-color="cyan" class="color-swatch-container unmatched-class">` +
               `<span class="test-class" style="background-color:cyan" tabindex="0" role="button" data-color-function="light-dark"></span>` +
               `<span>cyan</span>` +
             `</span>` +
@@ -1379,21 +1417,21 @@ function testParseLightDark(doc, parser) {
         `linear-gradient(` +
           `<span data-angle="33deg"><span>33deg</span></span>, ` +
           `light-dark(` +
-            `<span data-color="red" class="unmatched-class">` +
+            `<span data-color="red" class="color-swatch-container unmatched-class">` +
               `<span class="test-class" style="background-color:red" tabindex="0" role="button" data-color-function="light-dark"></span>`+
               `<span>red</span>`+
             `</span>, `+
-            `<span data-color="blue">` +
+            `<span data-color="blue" class="color-swatch-container">` +
               `<span class="test-class" style="background-color:blue" tabindex="0" role="button" data-color-function="light-dark"></span>` +
               `<span>blue</span>` +
             `</span>` +
           `), ` +
           `light-dark(` +
-            `<span data-color="pink" class="unmatched-class">` +
+            `<span data-color="pink" class="color-swatch-container unmatched-class">` +
               `<span class="test-class" style="background-color:pink" tabindex="0" role="button" data-color-function="light-dark"></span>` +
               `<span>pink</span>` +
             `</span>, ` +
-            `<span data-color="cyan">` +
+            `<span data-color="cyan" class="color-swatch-container">` +
               `<span class="test-class" style="background-color:cyan" tabindex="0" role="button" data-color-function="light-dark"></span>` +
               `<span>cyan</span>` +
             `</span>` +
@@ -1410,16 +1448,16 @@ function testParseLightDark(doc, parser) {
       expected:
         // prettier-ignore
         `light-dark(` +
-          `<span data-color="red">` +
+          `<span data-color="red" class="color-swatch-container">` +
             `<span class="test-class" style="background-color:red" tabindex="0" role="button" data-color-function="light-dark"></span>` +
             `<span>var(` +
-              `<span data-variable="--x = red">--x</span>` +
+              `<span data-variable="red">--x</span>` +
             `)</span>` +
           `</span>, ` +
-          `<span data-color="blue" class="unmatched-class">` +
+          `<span data-color="blue" class="color-swatch-container unmatched-class">` +
             `<span class="test-class" style="background-color:blue" tabindex="0" role="button" data-color-function="light-dark"></span>` +
             `<span>var(` +
-              `<span data-variable="--y = blue">--y</span>` +
+              `<span data-variable="blue">--y</span>` +
             `)</span>` +
           `</span>` +
         `)`,
@@ -1437,10 +1475,10 @@ function testParseLightDark(doc, parser) {
       expected:
         // prettier-ignore
         `light-dark(` +
-          `<span data-color="red">` +
+          `<span data-color="red" class="color-swatch-container">` +
             `<span class="test-class" style="background-color:red" tabindex="0" role="button" data-color-function="light-dark"></span>` +
             `<span>` +
-              `var(<span data-variable="--x = red">--x</span>)` +
+              `var(<span data-variable="red">--x</span>)` +
             `</span>` +
           `</span>,` +
           `<span class="unmatched-class">notacolor</span>` +
@@ -1460,10 +1498,10 @@ function testParseLightDark(doc, parser) {
         // prettier-ignore
         `light-dark(` +
           `<span class="unmatched-class">notacolor</span>,` +
-          `<span data-color="red">` +
+          `<span data-color="red" class="color-swatch-container">` +
             `<span class="test-class" style="background-color:red" tabindex="0" role="button" data-color-function="light-dark"></span>` +
             `<span>` +
-              `var(<span data-variable="--x = red">--x</span>)` +
+              `var(<span data-variable="red">--x</span>)` +
             `</span>` +
           `</span>` +
         `)`,
@@ -1479,10 +1517,10 @@ function testParseLightDark(doc, parser) {
       expected:
         // prettier-ignore
         `light-dark(  ` +
-          `<span data-color="red">` +
+          `<span data-color="red" class="color-swatch-container">` +
             `<span class="test-class" style="background-color:red" tabindex="0" role="button" data-color-function="light-dark"></span>` +
             `<span>` +
-              `var(<span data-variable="--x = red">--x</span>)` +
+              `var(<span data-variable="red">--x</span>)` +
             `</span>` +
           `</span>  ,  ` +
           `<span class="unmatched-class">notacolor</span>  ` +
@@ -1500,10 +1538,10 @@ function testParseLightDark(doc, parser) {
         // prettier-ignore
         `light-dark(  ` +
           `<span class="unmatched-class">notacolor</span>  ,  ` +
-          `<span data-color="red">` +
+          `<span data-color="red" class="color-swatch-container">` +
             `<span class="test-class" style="background-color:red" tabindex="0" role="button" data-color-function="light-dark"></span>` +
             `<span>` +
-              `var(<span data-variable="--x = red">--x</span>)` +
+              `var(<span data-variable="red">--x</span>)` +
             `</span>` +
           `</span>  ` +
         `)`,
@@ -1518,10 +1556,10 @@ function testParseLightDark(doc, parser) {
       expected:
         // prettier-ignore
         `light-dark(` +
-          `<span data-color="red">` +
+          `<span data-color="red" class="color-swatch-container">` +
             `<span class="test-class" style="background-color:red" tabindex="0" role="button" data-color-function="light-dark"></span>` +
             `<span>` +
-              `var(<span data-variable="--x = red">--x</span>)` +
+              `var(<span data-variable="red">--x</span>)` +
             `</span>` +
           `</span>` +
         `)`,
@@ -1536,10 +1574,10 @@ function testParseLightDark(doc, parser) {
       expected:
         // prettier-ignore
         `light-dark(` +
-          `<span data-color="red">` +
+          `<span data-color="red" class="color-swatch-container">` +
             `<span class="test-class" style="background-color:red" tabindex="0" role="button" data-color-function="light-dark"></span>` +
             `<span>` +
-              `var(<span data-variable="--x = red">--x</span>)` +
+              `var(<span data-variable="red">--x</span>)` +
             `</span>` +
           `</span>` +
         `)`,
@@ -1554,10 +1592,10 @@ function testParseLightDark(doc, parser) {
       expected:
         // prettier-ignore
         `light-dark(` +
-          `<span data-color="red">` +
+          `<span data-color="red" class="color-swatch-container">` +
             `<span class="test-class" style="background-color:red" tabindex="0" role="button" data-color-function="light-dark"></span>` +
             `<span>` +
-              `var(<span data-variable="--x = red">--x</span>)` +
+              `var(<span data-variable="red">--x</span>)` +
             `</span>` +
           `</span>,a,b` +
         `)`,
@@ -1572,10 +1610,10 @@ function testParseLightDark(doc, parser) {
       expected:
         // prettier-ignore
         `light-dark(` +
-          `<span data-color="red">` +
+          `<span data-color="red" class="color-swatch-container">` +
             `<span class="test-class" style="background-color:red" tabindex="0" role="button" data-color-function="light-dark"></span>` +
             `<span>` +
-              `var(<span data-variable="--x = red">--x</span>)` +
+              `var(<span data-variable="red">--x</span>)` +
             `</span>` +
           `</span>,a,b` +
         `)`,

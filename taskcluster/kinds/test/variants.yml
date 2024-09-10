@@ -36,7 +36,7 @@ headless:
 a11y-checks:
     description: "{description} with accessibility checks enabled"
     component: "Core::Disability Access APIs"
-    expiration: "2024-09-01"
+    expiration: "2025-03-01"
     suffix: "a11y-checks"
     mozinfo: "a11y_checks"
     replace:
@@ -62,7 +62,7 @@ a11y-checks:
 aab:
     description: "{description} with aab test_runner"
     component: "GeckoView::General"
-    expiration: "2024-09-01"
+    expiration: "2025-03-01"
     when: &gv_e10s_filter
         $eval: '"android" in task["test-platform"]'
     suffix: "aab"
@@ -84,7 +84,7 @@ aab:
 geckoview-no-fission:
     description: "{description} without fission enabled"
     component: "GeckoView::Sandboxing"
-    expiration: "2024-09-01"
+    expiration: "2025-03-01"
     when:
         <<: *gv_e10s_filter
     suffix: "nofis"
@@ -97,7 +97,7 @@ geckoview-no-fission:
 geckoview-fission:
     description: "{description} with fission enabled and default isolation strategy"
     component: "GeckoView::Sandboxing"
-    expiration: "2024-09-01"
+    expiration: "2025-03-01"
     when:
         <<: *gv_e10s_filter
     suffix: "fis"
@@ -106,7 +106,7 @@ geckoview-fission:
 geckoview-fission-isolate-high-value:
     description: "{description} with fission enabled and isolation strategy isolateHighValue"
     component: "GeckoView::Sandboxing"
-    expiration: "2024-09-01"
+    expiration: "2025-03-01"
     when:
         <<: *gv_e10s_filter
     suffix: "fis-hv"
@@ -119,7 +119,7 @@ geckoview-fission-isolate-high-value:
 no-fission:
     description: "{description} without fission enabled"
     component: "Core::DOM: Content Processes"
-    expiration: "2024-09-01"
+    expiration: "2025-03-01"
     suffix: "nofis"
     mozinfo: "fission"
     when:
@@ -135,7 +135,7 @@ no-fission:
 geckoview-no-fission-ship:
     description: "{description} with fission disabled and ship enabled"
     component: "GeckoView::Sandboxing"
-    expiration: "2024-09-01"
+    expiration: "2025-03-01"
     suffix: "nofis-ship"
     when:
         <<: *gv_e10s_filter
@@ -164,7 +164,7 @@ xorigin:
 conditioned_profile:
     description: "{description} with conditioned profile"
     component: "Testing::General"
-    expiration: "2024-09-01"
+    expiration: "2025-03-01"
     suffix: "condprof"
     mozinfo: "condprof"
     when:
@@ -193,6 +193,21 @@ conditioned_profile:
                 - "--conditioned-profile"
     replace:
         chunks: 8
+
+cm6:
+    description: "{description} with codemirror 6 enabled"
+    component: "DevTools::Framework"
+    expiration: "2025-03-01"
+    suffix: "cm6"
+    mozinfo: "cm6"
+    replace:
+        tier: 3
+    when:
+        $eval: '"mochitest-devtools-chrome" == task["try-name"]'
+    merge:
+        mozharness:
+            extra-options:
+                - "--setpref=devtools.debugger.features.codemirror-next=true"
 
 socketprocess:
     description: "{description} with socket process enabled"
@@ -236,7 +251,7 @@ socketprocess_networking:
 webrender-dcomp-disabled:
     description: "{description} with dcomp disabled"
     component: "Core::Graphics: WebRender"
-    expiration: "2024-09-01"
+    expiration: "2025-03-01"
     suffix: "wr-dc0"
     when:
         $eval: '"windows1" in task["test-platform"]'
@@ -252,7 +267,7 @@ webrender-dcomp-disabled:
 webrender-dcomp-present:  # Default variant ends up like this.
     description: "{description} with dcomp present but not overlays"
     component: "Core::Graphics: WebRender"
-    expiration: "2024-09-01"
+    expiration: "2025-03-01"
     suffix: "wr-dc1-p"
     when:
         $eval: '"windows1" in task["test-platform"]'
@@ -268,7 +283,7 @@ webrender-dcomp-present:  # Default variant ends up like this.
 webrender-dcomp-overlays:
     description: "{description} with dcomp overlays but not compositing"
     component: "Core::Graphics: WebRender"
-    expiration: "2024-09-01"
+    expiration: "2025-03-01"
     suffix: "wr-dc2-o"
     when:
         $eval: '"windows1" in task["test-platform"]'
@@ -284,7 +299,7 @@ webrender-dcomp-overlays:
 webrender-dcomp-compositing:
     description: "{description} with dcomp compositing"
     component: "Core::Graphics: WebRender"
-    expiration: "2024-09-01"
+    expiration: "2025-03-01"
     suffix: "wr-dc3-c"
     when:
         $eval: '"windows1" in task["test-platform"]'
@@ -310,17 +325,6 @@ webrender-sw:
         mozharness:
             extra-options:
                 - "--setpref=gfx.webrender.software=true"
-
-webgl-ipc:
-    description: "{description} with WebGL IPC process enabled"
-    component: "Core::Graphics: CanvasWebGL"
-    expiration: "2024-09-01"
-    suffix: "gli"
-    merge:
-        mozharness:
-            extra-options:
-                - "--setpref=webgl.out-of-process=true"
-                - "--setpref=security.sandbox.content.headless=true"
 
 wmf-media-engine:
     description: "{description} with Windows Media Foundation media engine enabled"

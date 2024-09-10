@@ -356,6 +356,23 @@ urlbar:
       type: boolean
       fallbackPref: browser.urlbar.quicksuggest.enabled
       description: Gate for the Firefox Suggest feature as a whole. If false, the Firefox Suggest preferences UI and Suggest suggestions will not be shown. If true, the preferences UI will be shown, and the user can turn suggestions on or off.
+    quickSuggestExposureSuggestionTypes:
+      type: string
+      setPref:
+        pref: browser.urlbar.quicksuggest.exposureSuggestionTypes
+        branch: default
+      description: >-
+        Comma-separated list of Suggest exposure suggestion types to enable.
+        Exposure suggestions are used to test potential exposures. They trigger
+        exposure telemetry based on a set of keywords you provide but they are
+        never visible. Set this variable to the `suggestion_type` defined in the
+        remote settings record(s) that contains your keywords. If you want to
+        test multiple suggestion types, separate them with commas, but also
+        consider using one experiment branch per type. Exposure suggestions are
+        recorded in telemetry with the "rust_exposure" result type. It's not
+        necessary to include "rust_exposure" in `exposureResults`. Unless you
+        are testing other results in the same experiment branch, it's also not
+        necessary to set `showExposureResults: false`.
     quickSuggestImpressionCapsSponsoredEnabled:
       type: boolean
       fallbackPref: browser.urlbar.quicksuggest.impressionCaps.sponsoredEnabled
@@ -732,9 +749,29 @@ newtab:
       type: boolean
       description: Allow Contile to use additonal sponsored top sites
 
+newtabUnifiedAds:
+  description: Mozilla Ad Routing Service (MARS) unified ads service
+  owner: mcrawford@mozilla.com, sdowne@mozilla.com
+  hasExposure: false
+  variables:
+    unifiedAdsEnabled:
+      type: boolean
+      description: >-
+          Enable MARS endpoint to serve content for all HNT services,
+          including top sites and recommended stories
+      setPref:
+        branch: user
+        pref: browser.newtabpage.activity-stream.unifiedAds.enabled
+    unifiedAdsEndpoint:
+      description: The URL for the MARS API endpoint.
+      type: string
+      setPref:
+        branch: user
+        pref: browser.newtabpage.activity-stream.unifiedAds.endpoint
+
 newtabSpocsCache:
   description: The about:newtab sponsored content cache.
-  owner: sdowne@getpocket.com
+  owner: sdowne@mozilla.com
   hasExposure: false
   variables:
     spocsCacheTimeout:
@@ -755,7 +792,7 @@ newtabSpocsCache:
 newtabLayoutExperiment:
   description: >-
     Change the default layout of new tab by adjusting sizes and spacing of elements.
-  owner: achurchwell@mozilla.com
+  owner: achurchwell@mozilla.com, sdowne@mozilla.com
   hasExposure: false
   variables:
     variantA:
@@ -765,6 +802,26 @@ newtabLayoutExperiment:
         pref: browser.newtabpage.activity-stream.newtabLayouts.variant-a
       description: >-
         Variant A in layouts experiment.
+    variantB:
+      type: boolean
+      setPref:
+        branch: user
+        pref: browser.newtabpage.activity-stream.newtabLayouts.variant-b
+      description: >-
+        Variant B in layouts experiment.
+
+newtabSponsoredContent:
+  description: >-
+    Change and control the sponsored content on newtab.
+  owner: sdowne@mozilla.com
+  hasExposure: false
+  variables:
+    spocPositions:
+      type: string
+      setPref:
+        branch: user
+        pref: browser.newtabpage.activity-stream.discoverystream.spoc-positions
+      description: CSV string of spoc position indexes on newtab Pocket grid
 
 newtabTopicSelection:
   description: the about:newtab topic selection experience.
@@ -804,17 +861,66 @@ newtabTopicSelection:
       setPref:
         branch: user
         pref: browser.newtabpage.activity-stream.discoverystream.topicSelection.locale-topics-config
+    regionTopicLabelConfig:
+      description: A comma-separated list of regions that get topic labels by default.
+      type: string
+      setPref:
+        branch: user
+        pref:  browser.newtabpage.activity-stream.discoverystream.topicLabels.region-topic-label-config
+    localeTopicLabelConfig:
+      description: A comma-separated list of locales that get topic Labels by default.
+      type: string
+      setPref:
+        branch: user
+        pref: browser.newtabpage.activity-stream.discoverystream.topicLabels.locale-topic-label-config
+
+newtabContextualContent:
+  description: about:newtab contextual content feed
+  owner: nbarrett@mozilla.com
+  hasExposure: false
+  variables:
+    contextualContentEnabled:
+      type: boolean
+      setPref:
+        branch: user
+        pref:  browser.newtabpage.activity-stream.discoverystream.contextualContent.enabled
+      description: >-
+        Override the contextual content enabled value set via region/locale
+    localeContextualContentConfig:
+      type: string
+      setPref:
+        branch: user
+        pref: browser.newtabpage.activity-stream.discoverystream.contextualContent.locale-content-config
+      description: >-
+        A comma-separated list of locales that get contextual content by default.
+    regionContextualContentConfig:
+      type: string
+      setPref:
+        branch: user
+        pref: browser.newtabpage.activity-stream.discoverystream.contextualContent.region-content-config
+      description: >-
+        A comma-separated list of regions that get contextual content by default.
+    contextualContentTopics:
+      type: string
+      setPref:
+        branch: user
+        pref: browser.newtabpage.activity-stream.discoverystream.contextualContent.topics
+      description: >-
+        CSV list of possible topics for the contextual content feed
+    contextualContentDetailedView:
+      type: boolean
+      setPref:
+        branch: user
+        pref: browser.newtabpage.activity-stream.discoverystream.contextualContent.detailedView
+      description: >-
+        Controls if cards in contextual content feed display meta information and images
 
 pocketNewtab:
   description: The Pocket section in newtab
-  owner: sdowne@getpocket.com
+  owner: sdowne@mozilla.com
   hasExposure: false
   isEarlyStartup: true
   variables:
-    spocPositions:
-      type: string
-      fallbackPref: browser.newtabpage.activity-stream.discoverystream.spoc-positions
-      description: CSV string of spoc position indexes on newtab Pocket grid
     spocTopsitesPositions:
       type: string
       fallbackPref: browser.newtabpage.activity-stream.discoverystream.spoc-topsites-positions
@@ -1169,7 +1275,7 @@ pocketNewtab:
 
 saveToPocket:
   description: The save to Pocket feature
-  owner: sdowne@getpocket.com
+  owner: sdowne@mozilla.com
   hasExposure: false
   variables:
     emailButton:
@@ -2294,6 +2400,36 @@ dapTelemetry:
       type: json
       description: A list of experiments with URLs for which we want to count visits.
 
+dapAggregators:
+  description: Aggregator server configuration to use for submitting DAP reports.
+  owner: tcampbell@mozilla.com
+  hasExposure: false
+  variables:
+    leader_url:
+      description: The URL of the DAP Leader server where reports are submitted.
+      type: string
+      setPref:
+        branch: default
+        pref: "toolkit.telemetry.dap.leader.url"
+    leader_hpke:
+      description: The base64-encode HPKE key to encrypt leader shares with.
+      type: string
+      setPref:
+        branch: default
+        pref: "toolkit.telemetry.dap.leader.hpke"
+    helper_url:
+      description: The URL of the DAP Helper server.
+      type: string
+      setPref:
+        branch: default
+        pref: "toolkit.telemetry.dap.helper.url"
+    helper_hpke:
+      description: The base64-encode HPKE key to encrypt helper shares with.
+      type: string
+      setPref:
+        branch: default
+        pref: "toolkit.telemetry.dap.helper.hpke"
+
 etpLevel2PBMPref:
   description: The pref that controls the ETP level 2 list in the private browsing mode
   owner: tihuang@mozilla.com
@@ -2462,6 +2598,18 @@ fingerprintingProtection:
         pref: javascript.options.use_fdlibm_for_sin_cos_tan
       description: >-
         Uses a different math backend for Math.sin/cos/tan in JavaScript that exposes less entropy
+
+userCharacteristics:
+  description: Control user characteristic data collection
+  owner: tihuang@mozilla.com
+  hasExposure: false
+  variables:
+    currentVersion:
+      type: int
+      setPref:
+        branch: user
+        pref: toolkit.telemetry.user_characteristics_ping.current_version
+      description: The current collection version of the user characteristics.
 
 migrationWizard:
   description: Prefs to control the Migration Wizard UI.
@@ -3305,19 +3453,6 @@ contentRelevancy:
       type: boolean
       fallbackPref: toolkit.contentRelevancy.ingestEnabled
 
-tabPreview:
-  description: Prefs to control Tab Previews
-  owner: dwalker@mozilla.com
-  hasExposure: false
-  variables:
-    tabPreviewsEnabled:
-      type: boolean
-      setPref:
-        branch: default
-        pref: browser.tabs.hoverPreview.enabled
-      description: >-
-        When true, users will see the new card preview when hovering a tab, instead of the standard tooltip
-
 backupService:
   description: Prefs to control the profile backup service
   owner: mconley@mozilla.com
@@ -3502,6 +3637,21 @@ chatbot:
         The prefs to set under browser.ml.chat.* with object keys as the
         sub-pref and values objects indicating the desired branch and value
         defaulting to clearing the user branch value.
+
+sidebar:
+  description: Sidebar feature configuration
+  owner: elee@mozilla.com
+  hasExposure: false
+  variables:
+    main.tools:
+      type: string
+      description: sidebar.main.tools pref value to set on user branch
+    revamp:
+      type: boolean
+      description: sidebar.revamp pref value to set on user branch
+    verticalTabs:
+      type: boolean
+      description: sidebar.verticalTabs pref value to set on user branch
 
 fxms_bmb_button:
   description: A feature for the Firefox Messaging System Bookmarks Bar button surface

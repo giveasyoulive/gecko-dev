@@ -632,79 +632,6 @@ RefPtr<PopulatePromise> PopulateTimeZone() {
   return populatePromise;
 }
 
-using StealPointerPromise = MozPromise<WidgetGUIEvent*, void_t, true>::Private;
-static StaticRefPtr<StealPointerPromise> sPointerStolenEvent;
-
-/* static */
-void nsUserCharacteristics::StealPointerEvent(WidgetGUIEvent* aEvent) {
-  if (!aEvent) {
-    return;
-  }
-
-  if (!sPointerStolenEvent) {
-    sPointerStolenEvent = new StealPointerPromise(__func__, true);
-    ClearOnShutdown(&sPointerStolenEvent);
-  }
-
-  if (sPointerStolenEvent->IsResolved()) {
-    return;
-  }
-
-  if (aEvent->mMessage != eMouseDown && aEvent->mMessage != eTouchStart) {
-    return;
-  }
-
-  sPointerStolenEvent->Resolve(aEvent, __func__);
-}
-
-RefPtr<PopulatePromise> PopulatePointerInfo() {
-  RefPtr<PopulatePromise> populatePromise = new PopulatePromise(__func__);
-
-  if (!sPointerStolenEvent) {
-    sPointerStolenEvent = new StealPointerPromise(__func__, true);
-    ClearOnShutdown(&sPointerStolenEvent);
-  }
-
-  sPointerStolenEvent->Then(
-      GetCurrentSerialEventTarget(), __func__,
-      [=](const StealPointerPromise::ResolveOrRejectValue& r) {
-        const auto& guiEvent = r.ResolveValue();
-
-        if (guiEvent->mMessage == eMouseDown) {
-          auto* mouseEvent = guiEvent->AsMouseEvent();
-          glean::characteristics::pointer_pressure.Set(
-              nsCString(std::to_string(mouseEvent->mPressure)));
-          glean::characteristics::pointer_tangentinal_pressure.Set(
-              nsCString(std::to_string(mouseEvent->tangentialPressure)));
-          glean::characteristics::pointer_tiltx.Set(mouseEvent->tiltX);
-          glean::characteristics::pointer_tilty.Set(mouseEvent->tiltY);
-          glean::characteristics::pointer_twist.Set(mouseEvent->twist);
-        } else if (guiEvent->mMessage == eTouchStart) {
-          auto* touchEvent = guiEvent->AsTouchEvent();
-          if (touchEvent->mTouches.Length() > 0) {
-            const auto& touch = touchEvent->mTouches[0];
-            glean::characteristics::pointer_height.Set(
-                touch->RadiusY(dom::CallerType::System));
-            glean::characteristics::pointer_width.Set(
-                touch->RadiusX(dom::CallerType::System));
-            glean::characteristics::pointer_tangentinal_pressure.Set(
-                nsCString(std::to_string(touch->tangentialPressure)));
-            glean::characteristics::pointer_tiltx.Set(touch->tiltX);
-            glean::characteristics::pointer_tilty.Set(touch->tiltY);
-            glean::characteristics::pointer_twist.Set(touch->twist);
-            glean::characteristics::touch_rotation_angle.Set(
-                nsCString(std::to_string(touch->mRotationAngle)));
-          }
-        }
-
-        if (!populatePromise->IsResolved()) {
-          populatePromise->Resolve(void_t(), __func__);
-        }
-      });
-
-  return populatePromise;
-}
-
 const RefPtr<PopulatePromise>& TimoutPromise(
     const RefPtr<PopulatePromise>& promise, uint32_t delay,
     const nsCString& funcName) {
@@ -738,7 +665,7 @@ const RefPtr<PopulatePromise>& TimoutPromise(
 // metric is set, this variable should be incremented. It'll be a lot. It's
 // okay. We're going to need it to know (including during development) what is
 // the source of the data we are looking at.
-const int kSubmissionSchema = 4;
+const int kSubmissionSchema = 5;
 
 const auto* const kUUIDPref =
     "toolkit.telemetry.user_characteristics_ping.uuid";
@@ -751,6 +678,26 @@ const auto* const kOptOutPref =
     "toolkit.telemetry.user_characteristics_ping.opt-out";
 const auto* const kSendOncePref =
     "toolkit.telemetry.user_characteristics_ping.send-once";
+
+namespace {
+
+// A helper function to get the current version from the pref. The current
+// version value is decided by both the default value and the user value. We use
+// the one with a greater number as the current version. The reason is that the
+// current value pref could be modified by either Nimbus or Firefox pref change.
+// Nimbus changes the user value and the Firefox pref change controls the
+// default value. To ensure changing the pref can successfully alter the current
+// version, we only consider the one with a larger version number as the current
+// version.
+int32_t GetCurrentVersion() {
+  auto userValue = Preferences::GetInt(kCurrentVersionPref, 0);
+  auto defaultValue =
+      Preferences::GetInt(kCurrentVersionPref, 0, PrefValueKind::Default);
+
+  return std::max(userValue, defaultValue);
+}
+
+}  // anonymous namespace
 
 // We don't submit a ping if this function fails
 nsresult PopulateEssentials() {
@@ -778,7 +725,7 @@ void AfterPingSentSteps(bool aUpdatePref) {
   if (aUpdatePref) {
     MOZ_LOG(gUserCharacteristicsLog, mozilla::LogLevel::Debug,
             ("Updating preference"));
-    auto current_version = Preferences::GetInt(kCurrentVersionPref, 0);
+    auto current_version = GetCurrentVersion();
     Preferences::SetInt(kLastVersionPref, current_version);
     if (Preferences::GetBool(kSendOncePref, false)) {
       Preferences::SetBool(kSendOncePref, false);
@@ -817,7 +764,7 @@ bool nsUserCharacteristics::ShouldSubmit() {
     return true;
   }
 
-  int32_t currentVersion = Preferences::GetInt(kCurrentVersionPref, 0);
+  int32_t currentVersion = GetCurrentVersion();
   int32_t lastSubmissionVersion = Preferences::GetInt(kLastVersionPref, 0);
   MOZ_ASSERT(lastSubmissionVersion <= currentVersion,
              "lastSubmissionVersion is somehow greater than currentVersion "
@@ -888,8 +835,6 @@ void nsUserCharacteristics::PopulateDataAndEventuallySubmit(
 
     promises.AppendElement(PopulateMediaDevices());
     promises.AppendElement(PopulateTimeZone());
-    promises.AppendElement(TimoutPromise(PopulatePointerInfo(), 5 * 60 * 1000,
-                                         "PopulatePointerInfo"_ns));
     PopulateMissingFonts();
     PopulateCSSProperties();
     PopulateScreenProperties();

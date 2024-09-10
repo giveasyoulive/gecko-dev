@@ -347,21 +347,18 @@ gfxMatrix SVGUtils::GetCanvasTM(nsIFrame* aFrame) {
   auto* parent = static_cast<SVGContainerFrame*>(aFrame->GetParent());
   auto* content = static_cast<SVGElement*>(aFrame->GetContent());
 
-  return content->PrependLocalTransformsTo(parent->GetCanvasTM());
+  return content->ChildToUserSpaceTransform() * parent->GetCanvasTM();
 }
 
-bool SVGUtils::IsSVGTransformed(const nsIFrame* aFrame,
-                                gfx::Matrix* aOwnTransform,
-                                gfx::Matrix* aFromParentTransform) {
+bool SVGUtils::GetParentSVGTransforms(const nsIFrame* aFrame,
+                                      gfx::Matrix* aFromParentTransform) {
   MOZ_ASSERT(aFrame->HasAllStateBits(NS_FRAME_SVG_LAYOUT |
                                      NS_FRAME_MAY_BE_TRANSFORMED),
              "Expecting an SVG frame that can be transformed");
-  bool foundTransform = false;
-  // Check if our parent has children-only transforms:
   if (SVGContainerFrame* parent = do_QueryFrame(aFrame->GetParent())) {
-    foundTransform = parent->HasChildrenOnlyTransform(aFromParentTransform);
+    return parent->HasChildrenOnlyTransform(aFromParentTransform);
   }
-  return foundTransform;
+  return false;
 }
 
 void SVGUtils::NotifyChildrenOfSVGChange(nsIFrame* aFrame, uint32_t aFlags) {
@@ -891,8 +888,8 @@ gfxRect SVGUtils::GetBBox(nsIFrame* aFrame, uint32_t aFlags,
     // NOTE: When changing this to apply to other frame types, make sure to
     // also update SVGUtils::FrameSpaceInCSSPxToUserSpaceOffset.
     MOZ_ASSERT(aFrame->GetContent()->IsSVGElement(), "bad cast");
-    SVGElement* element = static_cast<SVGElement*>(aFrame->GetContent());
-    matrix = element->PrependLocalTransformsTo(matrix, eChildToUserSpace);
+    auto* element = static_cast<SVGElement*>(aFrame->GetContent());
+    matrix = element->ChildToUserSpaceTransform() * matrix;
   }
   gfxRect bbox =
       svg->GetBBoxContribution(ToMatrix(matrix), aFlags).ToThebesRect();
@@ -969,9 +966,8 @@ gfxPoint SVGUtils::FrameSpaceInCSSPxToUserSpaceOffset(const nsIFrame* aFrame) {
   // For foreignObject frames, SVGUtils::GetBBox applies their local
   // transform, so we need to do the same here.
   if (aFrame->IsSVGForeignObjectFrame()) {
-    gfxMatrix transform =
-        static_cast<SVGElement*>(aFrame->GetContent())
-            ->PrependLocalTransformsTo(gfxMatrix(), eChildToUserSpace);
+    gfxMatrix transform = static_cast<SVGElement*>(aFrame->GetContent())
+                              ->ChildToUserSpaceTransform();
     NS_ASSERTION(!transform.HasNonTranslation(),
                  "we're relying on this being an offset-only transform");
     return transform.GetTranslation();
@@ -1465,9 +1461,9 @@ bool SVGUtils::GetSVGGlyphExtents(const Element* aElement,
     return false;
   }
 
-  gfxMatrix transform(aSVGToAppSpace);
+  gfxMatrix transform = aSVGToAppSpace;
   if (auto* svg = SVGElement::FromNode(frame->GetContent())) {
-    transform = svg->PrependLocalTransformsTo(aSVGToAppSpace);
+    transform = svg->ChildToUserSpaceTransform() * transform;
   }
 
   *aResult =
@@ -1524,9 +1520,6 @@ gfxMatrix SVGUtils::GetTransformMatrixInUserSpace(const nsIFrame* aFrame) {
         properties.mTranslate, properties.mRotate, properties.mScale,
         properties.mMotion.ptrOr(nullptr), properties.mTransform, refBox,
         AppUnitsPerCSSPixel());
-  }
-  if (aFrame->IsSVGTransformed(&svgTransform)) {
-    trans *= Matrix4x4::From2D(svgTransform);
   }
 
   trans.ChangeBasis(svgTransformOrigin);

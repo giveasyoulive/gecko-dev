@@ -47,6 +47,7 @@ import org.mozilla.fenix.components.toolbar.BrowserToolbarView
 import org.mozilla.fenix.components.toolbar.ToolbarIntegration
 import org.mozilla.fenix.ext.application
 import org.mozilla.fenix.ext.components
+import org.mozilla.fenix.ext.isTablet
 import org.mozilla.fenix.ext.settings
 import org.mozilla.fenix.helpers.FenixRobolectricTestRunner
 import org.mozilla.fenix.onboarding.FenixOnboarding
@@ -66,12 +67,14 @@ class BrowserFragmentTest {
     private lateinit var lifecycleOwner: MockedLifecycleOwner
     private lateinit var navController: NavController
     private lateinit var onboarding: FenixOnboarding
+    private lateinit var settings: Settings
 
     @get:Rule
     val coroutinesTestRule = MainCoroutineRule()
 
     @Before
     fun setup() {
+        mockkStatic("org.mozilla.fenix.ext.FragmentKt")
         context = mockk(relaxed = true)
         fenixApplication = mockk(relaxed = true)
         every { context.application } returns fenixApplication
@@ -81,6 +84,7 @@ class BrowserFragmentTest {
         lifecycleOwner = MockedLifecycleOwner(Lifecycle.State.STARTED)
         navController = mockk(relaxed = true)
         onboarding = mockk(relaxed = true)
+        settings = mockk(relaxed = true)
 
         browserFragment = spyk(BrowserFragment())
         every { browserFragment.view } returns view
@@ -90,11 +94,12 @@ class BrowserFragmentTest {
         every { browserFragment.activity } returns homeActivity
         every { browserFragment.lifecycle } returns lifecycleOwner.lifecycle
         every { context.components.fenixOnboarding } returns onboarding
+        every { context.components.settings } returns settings
 
         every { browserFragment.requireContext() } returns context
         every { browserFragment.initializeUI(any(), any()) } returns mockk()
         every { browserFragment.fullScreenChanged(any()) } returns Unit
-        every { browserFragment.resumeDownloadDialogState(any(), any(), any(), any()) } returns Unit
+        every { browserFragment.resumeDownloadDialogState(any(), any(), any()) } returns Unit
 
         testTab = createTab(url = "https://mozilla.org")
         store = BrowserStore()
@@ -106,6 +111,7 @@ class BrowserFragmentTest {
     @After
     fun tearDown() {
         unmockkObject(FeatureFlags)
+        unmockkStatic("org.mozilla.fenix.ext.FragmentKt")
     }
 
     @Test
@@ -166,7 +172,7 @@ class BrowserFragmentTest {
         val newSelectedTab = createTab("https://firefox.com")
         addAndSelectTab(newSelectedTab)
         verify(exactly = 1) {
-            browserFragment.resumeDownloadDialogState(newSelectedTab.id, store, context, any())
+            browserFragment.resumeDownloadDialogState(newSelectedTab.id, store, context)
         }
     }
 
@@ -387,11 +393,11 @@ class BrowserFragmentTest {
         mockkStatic(AppCompatResources::class)
         every { AppCompatResources.getDrawable(context, any()) } returns mockk()
 
-        every { browserFragment.resources.getBoolean(R.bool.tablet) } returns true
+        every { browserFragment.isTablet() } returns true
         browserFragment.onConfigurationChanged(mockk(relaxed = true))
         verify(exactly = 3) { browserToolbar.addNavigationAction(any()) }
 
-        every { browserFragment.resources.getBoolean(R.bool.tablet) } returns false
+        every { browserFragment.isTablet() } returns false
         browserFragment.onConfigurationChanged(mockk(relaxed = true))
         verify(exactly = 3) { browserToolbar.removeNavigationAction(any()) }
 
@@ -415,7 +421,7 @@ class BrowserFragmentTest {
         mockkStatic(AppCompatResources::class)
         every { AppCompatResources.getDrawable(context, any()) } returns mockk()
 
-        every { browserFragment.resources.getBoolean(R.bool.tablet) } returns true
+        every { browserFragment.isTablet() } returns true
         browserFragment.onConfigurationChanged(mockk(relaxed = true))
         verify(exactly = 3) { browserToolbar.addNavigationAction(any()) }
 
@@ -442,7 +448,7 @@ class BrowserFragmentTest {
         mockkStatic(AppCompatResources::class)
         every { AppCompatResources.getDrawable(context, any()) } returns mockk()
 
-        every { browserFragment.resources.getBoolean(R.bool.tablet) } returns false
+        every { browserFragment.isTablet() } returns false
         browserFragment.onConfigurationChanged(mockk(relaxed = true))
         verify(exactly = 0) { browserToolbar.addNavigationAction(any()) }
         verify(exactly = 0) { browserToolbar.removeNavigationAction(any()) }

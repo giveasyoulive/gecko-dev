@@ -359,7 +359,7 @@
 
     <string name="pref_key_return_to_browser" translatable="false">pref_key_return_to_browser</string>
 
-    <string name="pref_key_open_next_tab_desktop_mode" translatable="false">pref_key_open_next_tab_desktop_mode</string>
+    <string name="pref_key_open_next_tab_desktop_mode_is_tablet" translatable="false">pref_key_open_next_tab_desktop_mode_is_tablet</string>
 
     <!-- Pocket -->
     <string name="pref_key_pocket_homescreen_recommendations" translatable="false">pref_key_pocket_homescreen_recommendations</string>
@@ -375,7 +375,6 @@
     <string name="pref_key_nimbus_experiments" translatable="false">pref_key_nimbus_experiments</string>
     <string name="pref_key_nimbus_use_preview" translatable="false">pref_key_nimbus_use_preview</string>
     <string name="pref_key_history_metadata_feature" translatable="false">pref_key_history_metadata_feature</string>
-    <string name="pref_key_show_unified_search_2" translatable="false">pref_key_show_unified_search_2</string>
     <string name="pref_key_custom_glean_server_url" translatable="false">pref_key_custom_glean_server_url</string>
     <string name="pref_key_custom_sponsored_stories_parameters" translatable="false">pref_key_custom_sponsored_stories_parameters</string>
     <string name="pref_key_custom_sponsored_stories_parameters_enabled" translatable="false">pref_key_custom_sponsored_stories_parameters_enabled</string>
@@ -417,4 +416,8 @@
 
     <!-- Set as default browser prompt for existing users -->
     <string name="pref_key_set_as_default_browser_prompt_enabled" translatable="false">pref_key_set_as_default_browser_prompt_enabled</string>
+    <string name="pref_key_last_set_as_default_prompt_shown_time" translatable="false">pref_key_last_set_as_default_prompt_shown_time</string>
+    <string name="pref_key_number_of_set_as_default_prompt_shown_times" translatable="false">pref_key_number_of_set_as_default_prompt_shown_times</string>
+    <string name="pref_key_app_cold_start_count" translatable="false">pref_key_app_cold_start_count</string>
+
 </resources>

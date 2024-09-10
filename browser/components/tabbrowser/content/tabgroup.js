@@ -38,10 +38,46 @@
 
       this.#labelElement = this.querySelector(".tab-group-label");
       this.#labelElement.addEventListener("click", this);
+
+      this._tabsChangedObserver = new window.MutationObserver(mutationList => {
+        for (let mutation of mutationList) {
+          mutation.addedNodes.forEach(node => {
+            node.tagName === "tab" &&
+              node.dispatchEvent(
+                new CustomEvent("TabGrouped", {
+                  bubbles: true,
+                  detail: this,
+                })
+              );
+          });
+          mutation.removedNodes.forEach(node => {
+            node.tagName === "tab" &&
+              node.dispatchEvent(
+                new CustomEvent("TabUngrouped", {
+                  bubbles: true,
+                  detail: this,
+                })
+              );
+          });
+        }
+        if (!this.tabs.length) {
+          this.dispatchEvent(
+            new CustomEvent("TabGroupRemove", { bubbles: true })
+          );
+          this.remove();
+        }
+      });
+      this._tabsChangedObserver.observe(this, { childList: true });
+
+      this.dispatchEvent(new CustomEvent("TabGroupCreate", { bubbles: true }));
+    }
+
+    disconnectedCallback() {
+      this._tabsChangedObserver.disconnect();
     }
 
     get color() {
-      return this.style.getProperty("--tab-group-color");
+      return this.style.getPropertyValue("--tab-group-color");
     }
 
     set color(val) {
@@ -86,6 +122,18 @@
     addTabs(tabs) {
       for (let tab of tabs) {
         gBrowser.moveTabToGroup(tab, this);
+      }
+    }
+
+    /**
+     * remove all tabs from the group and delete the group
+     *
+     */
+    ungroupTabs() {
+      let adjacentTab = gBrowser.tabContainer.findNextTab(this.tabs.at(-1));
+
+      for (let tab of this.tabs) {
+        gBrowser.tabContainer.insertBefore(tab, adjacentTab);
       }
     }
 

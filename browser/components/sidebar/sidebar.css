@@ -5,6 +5,10 @@
 @import url("chrome://global/skin/global.css");
 
 :root {
+  --sidebar-background-color: -moz-sidebar;
+  --sidebar-text-color: -moz-sidebartext;
+  --sidebar-border-color: -moz-sidebarborder;
+
   background-color: transparent;
   height: 100%;
 }
@@ -52,6 +56,7 @@ moz-card {
   padding: var(--space-large);
   height: 100%;
   box-sizing: border-box;
+  border-radius: var(--border-radius-medium);
   width: 100%;
 }
 
@@ -65,5 +70,26 @@ fxview-search-textbox {
 
   &::part(container) {
     width: 100%;
+  }
+}
+
+fxview-empty-state {
+  &::part(container) {
+    margin-block-start: var(--space-medium);
+    background-color: var(--toolbar-bgcolor);
+    color: var(--toolbar-color);
+    border: 0.5px solid var(--panel-separator-color);
+    border-radius: var(--border-radius-medium);
+    padding-block: 83px;
+    padding-inline: var(--space-medium);
+  }
+
+  &::part(header) {
+    font-size: var(--font-size-large);
+  }
+
+  &::part(image) {
+    fill: var(--toolbar-bgcolor);
+    stroke: var(--toolbar-color);
   }
 }

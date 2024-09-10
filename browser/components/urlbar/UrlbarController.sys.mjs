@@ -111,6 +111,8 @@ export class UrlbarController {
    * Takes a query context and starts the query based on the user input.
    *
    * @param {UrlbarQueryContext} queryContext The query details.
+   * @returns {UrlbarQueryContext}
+   *   The updated query context.
    */
   async startQuery(queryContext) {
     // Cancel any running query.
@@ -1161,8 +1163,10 @@ class TelemetryEvent {
    *        exposures are enabled for its result type.
    */
   addExposure(result) {
-    if (result.exposureResultType) {
-      this.#exposureResultTypes.add(result.exposureResultType);
+    if (result.exposureTelemetry) {
+      this.#exposureResultTypes.add(
+        lazy.UrlbarUtils.searchEngagementTelemetryType(result)
+      );
     }
   }
 
@@ -1175,8 +1179,10 @@ class TelemetryEvent {
    *        result if exposures are enabled for its result type.
    */
   addTentativeExposure(result) {
-    if (result.exposureResultType) {
-      this.#tentativeExposureResultTypes.add(result.exposureResultType);
+    if (result.exposureTelemetry) {
+      this.#tentativeExposureResultTypes.add(
+        lazy.UrlbarUtils.searchEngagementTelemetryType(result)
+      );
     }
   }
 

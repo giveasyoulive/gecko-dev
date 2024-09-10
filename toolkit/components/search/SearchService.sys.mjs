@@ -411,7 +411,6 @@ export class SearchService {
    *   Returns the pending Promise when #init has started but not yet finished.
    *   | Resolved | when initialization has successfully finished.
    *   | Rejected | when initialization has failed.
-   *
    */
   async init() {
     if (["started", "success", "failed"].includes(this.#initializationStatus)) {
@@ -634,7 +633,6 @@ export class SearchService {
 
     await this.#createAndAddAddonEngine({
       extension,
-      locale: lazy.SearchUtils.DEFAULT_TAG,
     });
   }
 
@@ -1141,10 +1139,7 @@ export class SearchService {
    */
   #getEngineByWebExtensionDetails(details) {
     for (const engine of this._engines.values()) {
-      if (
-        engine._extensionID == details.id &&
-        engine._locale == details.locale
-      ) {
+      if (engine._extensionID == details.id) {
         return engine;
       }
     }
@@ -1764,7 +1759,6 @@ export class SearchService {
       try {
         await this.#createAndAddAddonEngine({
           extension,
-          locale: lazy.SearchUtils.DEFAULT_TAG,
           settings,
         });
       } catch (ex) {
@@ -2183,14 +2177,12 @@ export class SearchService {
       // overridden by another engine. We want to put the previous engine back,
       // so that the user retains that engine as default.
       engine = new lazy.AddonSearchEngine({
-        isAppProvided: false,
         details: {
           extensionID: overriddenBy,
-          locale: lazy.SearchUtils.DEFAULT_TAG,
         },
       });
       try {
-        await engine.init({ locale: lazy.SearchUtils.DEFAULT_TAG });
+        await engine.init();
       } catch (ex) {
         // If there is an error, the add-on may no longer be available, or
         // there was some other issue with the settings.
@@ -2363,7 +2355,6 @@ export class SearchService {
           }
 
           engine = new lazy.AddonSearchEngine({
-            isAppProvided: false,
             json: engineJSON,
           });
         } else {
@@ -2685,24 +2676,16 @@ export class SearchService {
    *   Options for the engine.
    * @param {Extension} options.extension
    *   An Extension object containing data about the extension.
-   * @param {string} [options.locale]
-   *   The locale to use within the WebExtension. Defaults to the WebExtension's
-   *   default locale.
    * @param {object} [options.settings]
    *   The saved settings for the user.
    */
-  async #createAndAddAddonEngine({
-    extension,
-    locale = lazy.SearchUtils.DEFAULT_TAG,
-    settings,
-  }) {
+  async #createAndAddAddonEngine({ extension, settings }) {
     // If we're in the startup cycle, and we've already loaded this engine,
     // then we use the existing one rather than trying to start from scratch.
     // This also avoids console errors.
     if (extension.startupReason == "APP_STARTUP") {
       let engine = this.#getEngineByWebExtensionDetails({
         id: extension.id,
-        locale,
       });
       if (engine) {
         lazy.logConsole.debug(
@@ -2715,8 +2698,7 @@ export class SearchService {
 
     lazy.logConsole.debug(
       "#createAndAddAddonEngine: installing:",
-      extension.id,
-      locale
+      extension.id
     );
 
     let shouldSetAsDefault = false;
@@ -2735,16 +2717,13 @@ export class SearchService {
     }
 
     let newEngine = new lazy.AddonSearchEngine({
-      isAppProvided: false,
       details: {
         extensionID: extension.id,
-        locale,
       },
     });
     await newEngine.init({
       settings,
       extension,
-      locale,
     });
 
     // If this extension is starting up, check to see if it previously overrode
@@ -2804,11 +2783,9 @@ export class SearchService {
       let isDefaultPrivate = engine == this.defaultPrivateEngine;
 
       let originalName = engine.name;
-      let locale = engine._locale || lazy.SearchUtils.DEFAULT_TAG;
 
       await engine.update({
         extension,
-        locale,
       });
 
       if (engine.name != originalName) {
@@ -3284,7 +3261,6 @@ export class SearchService {
    *
    * @param {string} errorType
    *   The error that can occur during search service init.
-   *
    */
   #maybeThrowErrorInTest(errorType) {
     if (
@@ -3617,7 +3593,6 @@ export class SearchService {
    *   The name of the previous default engine that will be replaced.
    * @param {string} newCurrentEngineName
    *   The name of the engine that will be the new default engine.
-   *
    */
   _showRemovalOfSearchEngineNotificationBox(
     prevCurrentEngineName,

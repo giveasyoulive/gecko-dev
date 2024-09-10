@@ -44,6 +44,7 @@ import org.mozilla.fenix.components.toolbar.ToolbarPosition
 import org.mozilla.fenix.components.toolbar.navbar.shouldAddNavigationBar
 import org.mozilla.fenix.ext.components
 import org.mozilla.fenix.ext.getPreferenceKey
+import org.mozilla.fenix.ext.isTablet
 import org.mozilla.fenix.nimbus.CookieBannersSection
 import org.mozilla.fenix.nimbus.FxNimbus
 import org.mozilla.fenix.nimbus.HomeScreenSection
@@ -1613,8 +1614,8 @@ class Settings(private val appContext: Context) : PreferencesHolder {
      * If set to true, next opened tab from home screen will be opened in desktop mode.
      */
     var openNextTabInDesktopMode by booleanPreference(
-        appContext.getPreferenceKey(R.string.pref_key_open_next_tab_desktop_mode),
-        default = false,
+        appContext.getPreferenceKey(R.string.pref_key_open_next_tab_desktop_mode_is_tablet),
+        default = appContext.isTablet(),
     )
 
     var signedInFxaAccount by booleanPreference(
@@ -1714,11 +1715,7 @@ class Settings(private val appContext: Context) : PreferencesHolder {
     /**
      * Indicates if the Unified Search feature should be visible.
      */
-    var showUnifiedSearchFeature by lazyFeatureFlagPreference(
-        key = appContext.getPreferenceKey(R.string.pref_key_show_unified_search_2),
-        default = { FxNimbus.features.unifiedSearch.value().enabled },
-        featureFlag = true,
-    )
+    val showUnifiedSearchFeature = true
 
     /**
      * Blocklist used to filter items from the home screen that have previously been removed.
@@ -1751,7 +1748,6 @@ class Settings(private val appContext: Context) : PreferencesHolder {
         key = appContext.getPreferenceKey(R.string.pref_key_should_enable_felt_privacy),
         featureFlag = true,
         default = {
-            FxNimbus.features.privateBrowsing.recordExposure()
             FxNimbus.features.privateBrowsing.value().feltPrivacyEnabled
         },
     )
@@ -2168,6 +2164,57 @@ class Settings(private val appContext: Context) : PreferencesHolder {
      */
     var setAsDefaultBrowserPromptForExistingUsersEnabled by booleanPreference(
         key = appContext.getPreferenceKey(R.string.pref_key_set_as_default_browser_prompt_enabled),
-        default = false,
+        default = FxNimbus.features.setAsDefaultPrompt.value().enabled,
     )
+
+    /**
+     * Last time the Set as default Browser prompt has been displayed to the user.
+     */
+    var lastSetAsDefaultPromptShownTimeInMillis by longPreference(
+        appContext.getPreferenceKey(R.string.pref_key_last_set_as_default_prompt_shown_time),
+        default = 0L,
+    )
+
+    /**
+     * Number of times the Set as default Browser prompt has been displayed to the user.
+     */
+    var numberOfSetAsDefaultPromptShownTimes by intPreference(
+        appContext.getPreferenceKey(R.string.pref_key_number_of_set_as_default_prompt_shown_times),
+        default = 0,
+    )
+
+    /**
+     * Number of app cold starts between Set as default Browser prompts.
+     */
+    var coldStartsBetweenSetAsDefaultPrompts by intPreference(
+        appContext.getPreferenceKey(R.string.pref_key_app_cold_start_count),
+        default = 0,
+    )
+
+    /**
+     * Number of days between Set as default Browser prompts.
+     */
+    private val daysBetweenDefaultBrowserPrompts = FxNimbus.features.setAsDefaultPrompt.value().daysBetweenPrompts
+
+    /**
+     * Maximum number of times the Set as default Browser prompt can be displayed to the user.
+     */
+    private val maxNumberOfDefaultBrowserPrompts =
+        FxNimbus.features.setAsDefaultPrompt.value().maxNumberOfTimesToDisplay
+
+    /**
+     * Number of app cold starts before displaying the Set as default Browser prompt.
+     */
+    private val appColdStartsToShowDefaultPrompt =
+        FxNimbus.features.setAsDefaultPrompt.value().appColdStartsBetweenPrompts
+
+    /**
+     * Indicates if the Set as default Browser prompt should be displayed to the user.
+     */
+    val shouldShowSetAsDefaultPrompt: Boolean
+        get() = setAsDefaultBrowserPromptForExistingUsersEnabled &&
+            (System.currentTimeMillis() - lastSetAsDefaultPromptShownTimeInMillis) >
+            daysBetweenDefaultBrowserPrompts * ONE_DAY_MS &&
+            numberOfSetAsDefaultPromptShownTimes < maxNumberOfDefaultBrowserPrompts &&
+            coldStartsBetweenSetAsDefaultPrompts >= appColdStartsToShowDefaultPrompt
 }

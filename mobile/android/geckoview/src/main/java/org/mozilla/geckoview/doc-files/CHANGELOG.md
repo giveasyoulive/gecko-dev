@@ -17,10 +17,13 @@ exclude: true
 - Added [`GeckoDisplay.windowInsetsChanged`][131.1].
 - Added [`GeckoView.addWindowInsetsListener`][131.2] and [`GeckoView.removeWindowInsetsListener`][131.3] to allow listening WindowInsets changes of Activity's root window with multiple listeners.
 - ⚠️Increased `compileSdkVersion` to 35 (Android 15)
+- ️️⚠️ Removed deprecated [`GeckoSession.ContentDelegate.onProductUrl`][128.5].
+- Added support for controlling `toolkit.telemetry.user_characteristics_ping.current_version` via [`GeckoRuntimeSettings.setUserCharacteristicPingCurrentVersion`][131.4]
 
 [131.1]: {{javadoc_uri}}/GeckoDisplay.html#windowInsetsChanged
 [131.2]: {{javadoc_uri}}/GeckoView.html#addWindowInsetsListener
 [131.3]: {{javadoc_uri}}/GeckoView.html#removeWindowInsetsListener
+[131.4]: {{javadoc_uri}}/GeckoRuntimeSettings.html#setUserCharacteristicPingCurrentVersion
 
 ## v130
 - ⚠️ Removed [`TranslationState`][127.4] constructor, please use the new [`TranslationState`][127.3] constructor with `hasVisibleChange`. ([bug 1895275]({{bugzilla}}1895275))
@@ -1602,4 +1605,4 @@ to allow adding gecko profiler markers.
 [65.24]: {{javadoc_uri}}/CrashReporter.html#sendCrashReport(android.content.Context,android.os.Bundle,java.lang.String)
 [65.25]: {{javadoc_uri}}/GeckoResult.html
 
-[api-version]: b5bac8a734b241d5e3d21f1aaa61ee81f75e32c4
+[api-version]: 87b7eb1c251953b4a07f1a0c71ac1af4c73562b2

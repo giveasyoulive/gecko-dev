@@ -281,6 +281,8 @@ class Touch;
 class TouchList;
 class TreeWalker;
 enum class ViewportFitType : uint8_t;
+class ViewTransition;
+class ViewTransitionUpdateCallback;
 class WakeLockSentinel;
 class WindowContext;
 class WindowGlobalChild;
@@ -2033,7 +2035,7 @@ class Document : public nsINode,
   void RuleAdded(StyleSheet&, css::Rule&);
   void RuleRemoved(StyleSheet&, css::Rule&);
   void SheetCloned(StyleSheet&) {}
-  void ImportRuleLoaded(CSSImportRule&, StyleSheet&);
+  void ImportRuleLoaded(StyleSheet&);
 
   /**
    * Flush notifications for this document and its parent documents
@@ -3654,6 +3656,10 @@ class Document : public nsINode,
   bool FireMutationEvents() const { return mFireMutationEvents; }
   void SetFireMutationEvents(bool aFire) { mFireMutationEvents = aFire; }
 
+  // Even if mutation events are disabled by default,
+  // dom.mutation_events.forceEnable can be used to enable them per site.
+  bool MutationEventsEnabled();
+
   // This should be called when this document receives events which are likely
   // to be user interaction with the document, rather than the byproduct of
   // interaction with the browser (i.e. a keypress to scroll the view port,
@@ -3747,6 +3753,8 @@ class Document : public nsINode,
   // Update intersection observers in this document and all
   // same-process subdocuments.
   void UpdateIntersections(TimeStamp aNowTime);
+  // Update the EffectsInfo of remote browsers.
+  void UpdateRemoteFrameEffects();
   MOZ_CAN_RUN_SCRIPT void NotifyIntersectionObservers();
 
   DOMIntersectionObserver* GetLazyLoadObserver() { return mLazyLoadObserver; }
@@ -3811,6 +3819,14 @@ class Document : public nsINode,
    */
   MOZ_CAN_RUN_SCRIPT void
   DetermineProximityToViewportAndNotifyResizeObservers();
+
+  already_AddRefed<ViewTransition> StartViewTransition(
+      const Optional<OwningNonNull<ViewTransitionUpdateCallback>>&);
+  ViewTransition* GetActiveViewTransition() const {
+    return mActiveViewTransition;
+  }
+  void ClearActiveViewTransition();
+  void PerformPendingViewTransitionOperations();
 
   // Getter for PermissionDelegateHandler. Performs lazy initialization.
   PermissionDelegateHandler* GetPermissionDelegateHandler();
@@ -4919,6 +4935,8 @@ class Document : public nsINode,
 
   bool mFireMutationEvents : 1;
 
+  Maybe<bool> mMutationEventsEnabled;
+
   // The fingerprinting protections overrides for this document. The value will
   // override the default enabled fingerprinting protections for this document.
   // This will only get populated if these is one that comes from the local
@@ -5347,6 +5365,9 @@ class Document : public nsINode,
   RefPtr<ChromeObserver> mChromeObserver;
 
   RefPtr<HTMLAllCollection> mAll;
+
+  // https://drafts.csswg.org/css-view-transitions-1/#document-active-view-transition
+  RefPtr<ViewTransition> mActiveViewTransition;
 
   nsTHashSet<RefPtr<WorkerDocumentListener>> mWorkerListeners;
 

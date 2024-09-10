@@ -66,6 +66,11 @@ body {
   --toolbarbutton-border-radius: 4px;
 
   --chrome-content-separator-color: ThreeDShadow;
+  /* stylelint-disable-next-line media-query-no-invalid */
+  @media (-moz-bool-pref: "sidebar.revamp") {
+    --chrome-content-separator-color: var(--lwt-sidebar-border-color, light-dark(rgba(0,0,0,.3), rgba(255,255,255,.3)));
+  }
+
   --tabs-navbar-separator-color: ThreeDShadow;
   --tabs-navbar-separator-style: solid;
 
@@ -137,9 +142,13 @@ body {
     color: var(--lwt-text-color);
 
     --link-color: light-dark(rgb(0, 97, 224), rgb(0, 221, 255));
-    --chrome-content-separator-color: rgba(0,0,0,.3);
     --tabs-navbar-separator-color: light-dark(rgba(0,0,0,.1), rgba(0,0,0,.3));
     --attention-dot-color: light-dark(#2ac3a2, #54ffbd);
+
+    /* stylelint-disable-next-line media-query-no-invalid */
+    @media not (-moz-bool-pref: "sidebar.revamp") {
+      --chrome-content-separator-color: light-dark(rgba(0,0,0,.3), rgba(255,255,255,.3));
+    }
 
     @media not (prefers-contrast) {
       --focus-outline-color: light-dark(#0061E0, #00DDFF);
@@ -178,13 +187,27 @@ body {
   margin: 0;
 }
 
+/* Chrome/content separation */
+
+#navigator-toolbox {
+  /* This reserves space for the tabbox outline */
+  border-bottom: 0.01px solid var(--toolbar-bgcolor);
+}
+
+#tabbrowser-tabbox {
+  position: relative;
+  outline: 0.01px solid var(--chrome-content-separator-color);
+
+  /* stylelint-disable-next-line media-query-no-invalid */
+  @media (-moz-bool-pref: "sidebar.revamp") {
+    box-shadow: 0 2px 6px 0 light-dark(rgb(0, 0, 0, 0.2), rgb(0, 0, 0, 0.8));
+  }
+}
+
 /* Toolbox and Toolbars */
 
 #navigator-toolbox {
   appearance: none;
-
-  /* Toolbar / content area border */
-  border-bottom: 0.01px solid var(--chrome-content-separator-color);
 
   background-color: var(--toolbox-non-lwt-bgcolor);
   color: var(--toolbox-non-lwt-textcolor);
@@ -423,28 +446,11 @@ body {
 
   /* Bookmarks toolbar empty message */
 
+  /* If the toolbar is not initialized set a zero width, but retain height. */
   &[collapsed=false]:not([initialized]) > #personal-toolbar-empty {
     visibility: hidden;
-  }
-
-  /*
-   * Make the empty bookmarks toolbar message take up no horizontal space.
-   * This avoids two issues:
-   * 1) drag/drop of urls/bookmarks to the toolbar not working, because they
-   *    land on the personal-toolbar-empty element.
-   * 2) buttons in the toolbar moving horizontally while the window opens,
-   *    because the element is first shown at full width and then completely
-   *    hidden.
-   * TODO(emilio): The comment above was never quite true (the message did take
-   * horizontal space, see bug 1812636). Figure out how much of this rule is
-   * really needed.
-   */
-  &[collapsed=false] > #personal-toolbar-empty[nowidth] > #personal-toolbar-empty-description {
-    margin-inline: 0;
-    min-width: 0;
-    white-space: nowrap;
-    position: relative;
-    z-index: 1;
+    width: 0;
+    overflow-x: hidden;
   }
 
   /* Bookmarks toolbar in customize mode */
@@ -455,6 +461,10 @@ body {
     /* Avoid the toolbar having no height when there's no items in it */
     min-height: 22px;
   }
+}
+
+#personal-toolbar-empty-description {
+  white-space: nowrap;
 }
 
 #personal-bookmarks {
@@ -489,7 +499,8 @@ toolbarpaletteitem:has(> toolbarbutton.fxms-bmb-button),
 
   .newTabBrowserPanel,
   #sidebar-main,
-  #sidebar-box {
+  #sidebar-box,
+  .sidebar-animation-screenshot {
     /* Make room for the bookmarks toolbar so that it won't visibly overlap the
        new tab page and sidebar contents. We do not put this padding on #browser
        as that would resize the content area for all tabs including background

@@ -137,13 +137,14 @@ class CookieCommons final {
   static bool IsSameSiteForeign(nsIChannel* aChannel, nsIURI* aHostURI,
                                 bool* aHadCrossSiteRedirects);
 
-  static void RecordUnicodeTelemetry(const CookieStruct& cookieData);
-
   static bool ChipsLimitEnabledAndChipsCookie(
       const Cookie& cookie, dom::BrowsingContext* aBrowsingContext);
 
   static void ComposeCookieString(nsTArray<RefPtr<Cookie>>& aCookieList,
                                   nsACString& aCookieString);
+
+  static void GetServerDateHeader(nsIChannel* aChannel,
+                                  nsACString& aServerDateHeader);
 };
 
 }  // namespace net

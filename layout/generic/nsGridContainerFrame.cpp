@@ -1250,16 +1250,32 @@ struct nsGridContainerFrame::TrackSizingFunctions {
       // "treating each track as its max track sizing function if that is
       // definite or as its minimum track sizing function otherwise"
       // https://drafts.csswg.org/css-grid-2/#valdef-repeat-auto-fill
-      const auto& sizingFunction = SizingFor(i);
-      const auto& maxCoord = sizingFunction.GetMax();
-      const auto* coord = &maxCoord;
-      if (!coord->IsBreadth()) {
-        coord = &sizingFunction.GetMin();
-        if (!coord->IsBreadth()) {
-          return 1;
+      nscoord trackSize;
+      {
+        const auto& sizingFunction = SizingFor(i);
+        const auto& maxCoord = sizingFunction.GetMax();
+        const auto& minCoord = sizingFunction.GetMin();
+        if (maxCoord.IsBreadth() && minCoord.IsBreadth()) {
+          // If the max is less than the min, then the max will be floored by
+          // the min (essentially yielding minmax(min, min))
+          // https://drafts.csswg.org/css-grid-2/#funcdef-grid-template-columns-minmax
+          const nscoord minSize =
+              ::ResolveToDefiniteSize(minCoord, percentBasis);
+          const nscoord maxSize =
+              ::ResolveToDefiniteSize(maxCoord, percentBasis);
+          trackSize = std::max(maxSize, minSize);
+        } else {
+          const auto* coord = &maxCoord;
+          if (!coord->IsBreadth()) {
+            coord = &minCoord;
+            if (!coord->IsBreadth()) {
+              return 1;
+            }
+          }
+          trackSize = ::ResolveToDefiniteSize(*coord, percentBasis);
         }
       }
-      nscoord trackSize = ::ResolveToDefiniteSize(*coord, percentBasis);
+
       if (i >= mRepeatAutoStart && i < mRepeatAutoEnd) {
         // Use a minimum 1px for the repeat() track-size.
         if (trackSize < AppUnitsPerCSSPixel()) {
@@ -4899,8 +4915,8 @@ void nsGridContainerFrame::Grid::PlaceGridItems(
       // This clamping only applies to auto sizes.
       if (containBSize &&
           aSizes.mSize.BSize(aState.mWM) == NS_UNCONSTRAINEDSIZE) {
-        return NS_CSS_MINMAX(*containBSize, aSizes.mMin.BSize(aState.mWM),
-                             aSizes.mMax.BSize(aState.mWM));
+        return CSSMinMax(*containBSize, aSizes.mMin.BSize(aState.mWM),
+                         aSizes.mMax.BSize(aState.mWM));
       }
       return aSizes.mSize.BSize(aState.mWM);
     }();
@@ -5381,7 +5397,7 @@ static nscoord MeasuringReflow(nsIFrame* aChild,
   // the things that are affected by ComputeSizeFlag::IsGridMeasuringReflow.
   childRI.SetBResize(true);
   // Not 100% sure this is needed, but be conservative for now:
-  childRI.mFlags.mIsBResizeForPercentages = true;
+  childRI.SetBResizeForPercentages(true);
 
   ReflowOutput childSize(childRI);
   nsReflowStatus childStatus;
@@ -7547,7 +7563,7 @@ void nsGridContainerFrame::ReflowInFlowChild(
   // the child was a measuring reflow, and only if the child does some of the
   // things that are affected by ComputeSizeFlag::IsGridMeasuringReflow.
   childRI.SetBResize(true);
-  childRI.mFlags.mIsBResizeForPercentages = true;
+  childRI.SetBResizeForPercentages(true);
 
   // If the child is stretching in its block axis, and we might be fragmenting
   // it in that axis, then setup a frame property to tell
@@ -9453,8 +9469,8 @@ void nsGridContainerFrame::DidSetComputedStyle(ComputedStyle* aOldStyle) {
   UpdateSubgridFrameState();
 }
 
-nscoord nsGridContainerFrame::ComputeIntrinsicISize(gfxContext* aContext,
-                                                    IntrinsicISizeType aType) {
+nscoord nsGridContainerFrame::ComputeIntrinsicISize(
+    const IntrinsicSizeInput& aInput, IntrinsicISizeType aType) {
   if (Maybe<nscoord> containISize = ContainIntrinsicISize()) {
     return *containISize;
   }
@@ -9462,7 +9478,7 @@ nscoord nsGridContainerFrame::ComputeIntrinsicISize(gfxContext* aContext,
   // Calculate the sum of column sizes under intrinsic sizing.
   // https://drafts.csswg.org/css-grid-2/#intrinsic-sizes
   NormalizeChildLists();
-  GridReflowInput state(this, *aContext);
+  GridReflowInput state(this, *aInput.mContext);
   InitImplicitNamedAreas(state.mGridStyle);  // XXX optimize
 
   // The min/sz/max sizes are the input to the "repeat-to-fill" algorithm:
@@ -9523,18 +9539,18 @@ nscoord nsGridContainerFrame::ComputeIntrinsicISize(gfxContext* aContext,
   return last.mPosition + last.mBase;
 }
 
-nscoord nsGridContainerFrame::IntrinsicISize(gfxContext* aContext,
+nscoord nsGridContainerFrame::IntrinsicISize(const IntrinsicSizeInput& aInput,
                                              IntrinsicISizeType aType) {
   auto* firstCont = static_cast<nsGridContainerFrame*>(FirstContinuation());
   if (firstCont != this) {
-    return firstCont->IntrinsicISize(aContext, aType);
+    return firstCont->IntrinsicISize(aInput, aType);
   }
 
   nscoord& cachedISize = aType == IntrinsicISizeType::MinISize
                              ? mCachedMinISize
                              : mCachedPrefISize;
   if (cachedISize == NS_INTRINSIC_ISIZE_UNKNOWN) {
-    cachedISize = ComputeIntrinsicISize(aContext, aType);
+    cachedISize = ComputeIntrinsicISize(aInput, aType);
   }
   return cachedISize;
 }

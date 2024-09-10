@@ -217,7 +217,7 @@ export class SearchSettings {
     ) {
       let changedEngines = new Map();
       for (let engine of this.#settings.engines) {
-        if (engine._isAppProvided) {
+        if (engine._isAppProvided && engine.id) {
           let oldId = engine.id;
           engine.id = engine.id
             .replace("@search.mozilla.orgdefault", "")
@@ -420,7 +420,6 @@ export class SearchSettings {
    *
    * @returns {*}
    *   A copy of the settings metadata object.
-   *
    */
   getSettingsMetaData() {
     return { ...this.#settings.metaData };
@@ -438,7 +437,6 @@ export class SearchSettings {
    *   The value of the attribute.
    *   We return undefined if the value of the attribute is not known or does
    *   not match the verification hash.
-   *
    */
   getVerifiedMetaDataAttribute(name, isAppProvided) {
     let attribute = this.getMetaDataAttribute(name);

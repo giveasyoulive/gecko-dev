@@ -42,6 +42,9 @@ internal fun ToolsSubmenu(
         header = {
             SubmenuHeader(
                 header = stringResource(id = R.string.browser_menu_tools),
+                backButtonContentDescription = stringResource(
+                    id = R.string.browser_menu_back_button_content_description,
+                ),
                 onClick = onBackButtonClick,
             )
         },
@@ -54,6 +57,8 @@ internal fun ToolsSubmenu(
             )
 
             if (isReaderViewActive) {
+                Divider(color = FirefoxTheme.colors.borderSecondary)
+
                 MenuItem(
                     label = stringResource(id = R.string.browser_menu_customize_reader_view_2),
                     beforeIconPainter = painterResource(id = R.drawable.mozac_ic_reader_view_customize_24),
@@ -148,7 +153,7 @@ private fun TranslationMenuItem(
                 id = R.string.browser_menu_translated_to,
                 translatedLanguage,
             ),
-            beforeIconPainter = painterResource(id = R.drawable.mozac_ic_translate_24),
+            beforeIconPainter = painterResource(id = R.drawable.mozac_ic_translate_active_24),
             state = if (isReaderViewActive) MenuItemState.DISABLED else MenuItemState.ACTIVE,
             onClick = onClick,
         )

@@ -66,6 +66,77 @@ add_task(async function test_toggle_vertical_tabs() {
 
   is(win.gBrowser.tabs.length, 2, "Tabstrip now has two tabs");
 
+  let tabRect = win.gBrowser.selectedTab.getBoundingClientRect();
+  let containerRect = win.gBrowser.tabContainer.getBoundingClientRect();
+
+  Assert.greater(
+    containerRect.bottom - tabRect.bottom,
+    500,
+    "Container should extend far beyond the last tab."
+  );
+
+  // Synthesize a double click 100px below the last tab
+  EventUtils.synthesizeMouseAtPoint(
+    containerRect.left + containerRect.width / 2,
+    tabRect.bottom + 100,
+    { clickCount: 1 },
+    win
+  );
+  EventUtils.synthesizeMouseAtPoint(
+    containerRect.left + containerRect.width / 2,
+    tabRect.bottom + 100,
+    { clickCount: 2 },
+    win
+  );
+
+  is(win.gBrowser.tabs.length, 3, "Tabstrip now has three tabs");
+
+  tabRect = win.gBrowser.selectedTab.getBoundingClientRect();
+
+  // Middle click should also open a new tab.
+  EventUtils.synthesizeMouseAtPoint(
+    containerRect.left + containerRect.width / 2,
+    tabRect.bottom + 100,
+    { button: 1 },
+    win
+  );
+
+  is(win.gBrowser.tabs.length, 4, "Tabstrip now has four tabs");
+
+  const toolbarContextMenu = document.getElementById("toolbar-context-menu");
+  EventUtils.synthesizeMouseAtPoint(
+    containerRect.left + containerRect.width / 2,
+    tabRect.bottom + 100,
+    {
+      type: "contextmenu",
+      button: 2,
+    },
+    win
+  );
+
+  await openAndWaitForContextMenu(
+    toolbarContextMenu,
+    win.gBrowser.selectedTab,
+    () => {
+      ok(
+        document.getElementById("toolbar-context-customize").hidden,
+        "Customize menu item should be hidden"
+      );
+      ok(
+        !document.getElementById("toggle_PersonalToolbar"),
+        "Bookmarks menu item should not be present"
+      );
+      ok(
+        !document.getElementById("toolbar-context-reloadSelectedTab").hidden,
+        "Reload tab item should be visible"
+      );
+      ok(
+        !document.getElementById("toolbar-context-undoCloseTab").hidden,
+        "Undo close tab item should be visible"
+      );
+    }
+  );
+
   // flip the pref to move the tabstrip horizontally
   await SpecialPowers.pushPrefEnv({ set: [["sidebar.verticalTabs", false]] });
 
@@ -85,4 +156,26 @@ add_task(async function test_toggle_vertical_tabs() {
   );
 
   await BrowserTestUtils.closeWindow(win);
+});
+
+add_task(async function test_enabling_vertical_tabs_enables_sidebar_revamp() {
+  await SpecialPowers.pushPrefEnv({ set: [["sidebar.revamp", false]] });
+  ok(
+    !Services.prefs.getBoolPref("sidebar.revamp", false),
+    "sidebar.revamp pref is false initially."
+  );
+  ok(
+    !Services.prefs.getBoolPref("sidebar.verticalTabs", false),
+    "sidebar.verticalTabs pref is false initially."
+  );
+
+  await SpecialPowers.pushPrefEnv({ set: [["sidebar.verticalTabs", true]] });
+  ok(
+    Services.prefs.getBoolPref("sidebar.verticalTabs", false),
+    "sidebar.verticalTabs pref is enabled after we've enabled it."
+  );
+  ok(
+    Services.prefs.getBoolPref("sidebar.revamp", false),
+    "sidebar.revamp pref is also enabled after we've enabled vertical tabs."
+  );
 });

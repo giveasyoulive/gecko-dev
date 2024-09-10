@@ -45,7 +45,6 @@ let ignoreList = [
     errorMessage: /Property contained reference to invalid variable.*color/i,
     isFromDevTools: true,
   },
-  // PDF.js uses a property that is currently only supported in chrome.
   {
     sourceName: /web\/viewer\.css$/i,
     errorMessage:
@@ -53,6 +52,13 @@ let ignoreList = [
     isFromDevTools: false,
   },
 ];
+
+if (AppConstants.platform != "macosx") {
+  ignoreList.push({
+    errorMessage: /Unknown property.*-moz-osx-font-smoothing/i,
+    isFromDevTools: false,
+  });
+}
 
 if (!Services.prefs.getBoolPref("layout.css.zoom.enabled")) {
   ignoreList.push({
@@ -128,6 +134,25 @@ let propNameAllowlist = [
   { propName: "--panel-border-color", isFromDevTools: true },
   { propName: "--panel-shadow", isFromDevTools: true },
   { propName: "--panel-shadow-margin", isFromDevTools: true },
+
+  // These variable are used in JS in WaterfallBackground.js
+  {
+    propName: "--timing-marker-dom-content-loaded-color",
+    isFromDevTools: true,
+  },
+  {
+    propName: "--timing-marker-load-color",
+    isFromDevTools: true,
+  },
+  // These variables are used in JS in viewer.mjs (PDF.js).
+  {
+    propName: "--scale-round-x",
+    isFromDevTools: false,
+  },
+  {
+    propName: "--scale-round-y",
+    isFromDevTools: false,
+  },
 ];
 
 // Add suffix to stylesheets' URI so that we always load them here and

@@ -51,10 +51,6 @@
 #endif
 #include "ProfileReset.h"
 
-#ifdef MOZ_INSTRUMENT_EVENT_LOOP
-#  include "EventTracer.h"
-#endif
-
 #ifdef XP_MACOSX
 #  include "nsVersionComparator.h"
 #  include "MacLaunchHelper.h"
@@ -4113,7 +4109,8 @@ int XREMain::XRE_mainInit(bool* aExitFlag) {
       mozilla::Version(mAppData->maxVersion) < gToolkitVersion) {
     Output(true,
            "Error: Platform version '%s' is not compatible with\n"
-           "minVersion >= %s\nmaxVersion <= %s\n",
+           "minVersion >= %s\nmaxVersion <= %s\n"
+           "Maybe try to reinstall " MOZ_APP_DISPLAYNAME "?\n",
            (const char*)gToolkitVersion, (const char*)mAppData->minVersion,
            (const char*)mAppData->maxVersion);
     return 1;
@@ -5749,13 +5746,6 @@ nsresult XREMain::XRE_mainRun() {
       mNativeApp->Enable();
     }
 
-#ifdef MOZ_INSTRUMENT_EVENT_LOOP
-    if (PR_GetEnv("MOZ_INSTRUMENT_EVENT_LOOP")) {
-      bool logToConsole = true;
-      mozilla::InitEventTracing(logToConsole);
-    }
-#endif /* MOZ_INSTRUMENT_EVENT_LOOP */
-
     // Send Telemetry about Gecko version and buildid
     mozilla::glean::gecko::version.Set(nsDependentCString(gAppData->version));
     mozilla::glean::gecko::build_id.Set(nsDependentCString(gAppData->buildID));
@@ -6062,10 +6052,6 @@ int XREMain::XRE_main(int argc, char* argv[], const BootstrapConfig& aConfig) {
   XRE_CleanupX11ErrorHandler();
 #endif
 
-#ifdef MOZ_INSTRUMENT_EVENT_LOOP
-  mozilla::ShutdownEventTracing();
-#endif
-
   gAbsoluteArgv0Path.Truncate();
 
 #if defined(MOZ_HAS_REMOTE)
@@ -6168,6 +6154,7 @@ nsresult XRE_InitCommandLine(int aArgc, char* aArgv[]) {
       return NS_ERROR_FAILURE;
     }
     mozilla::Omnijar::Init(greOmni, greOmni);
+    MOZ_RELEASE_ASSERT(IsPackagedBuild(), "Android builds are always packaged");
   }
 #endif
 

@@ -38,7 +38,7 @@ function commonDialogOnLoad() {
   let needIconifiedHeader =
     args.modalType == Ci.nsIPrompt.MODAL_TYPE_CONTENT ||
     ["promptUserAndPass", "promptPassword"].includes(args.promptType) ||
-    args.headerIconURL;
+    args.headerIconCSSValue;
   let root = document.documentElement;
   if (needIconifiedHeader) {
     root.setAttribute("neediconheader", "true");
@@ -158,7 +158,9 @@ function commonDialogOnLoad() {
               resources: [],
               analysisType: Ci.nsIContentAnalysisRequest.eBulkDataEntry,
               operationTypeForDisplay: Ci.nsIContentAnalysisRequest.eClipboard,
-              url: args.owningBrowsingContext.currentURI,
+              url: lazy.gContentAnalysis.getURIForBrowsingContext(
+                args.owningBrowsingContext
+              ),
               textContent: data,
               windowGlobalParent:
                 args.owningBrowsingContext.currentWindowContext,

@@ -807,30 +807,30 @@ bool nsBlockFrame::TextIndentAppliesTo(const LineIterator& aLine) const {
   return isFirstLineOrAfterHardBreak != textIndent.hanging;
 }
 
-nscoord nsBlockFrame::IntrinsicISize(gfxContext* aContext,
+nscoord nsBlockFrame::IntrinsicISize(const IntrinsicSizeInput& aInput,
                                      IntrinsicISizeType aType) {
   nsIFrame* firstCont = FirstContinuation();
   if (firstCont != this) {
-    return firstCont->IntrinsicISize(aContext, aType);
+    return firstCont->IntrinsicISize(aInput, aType);
   }
 
   CheckIntrinsicCacheAgainstShrinkWrapState();
 
   if (aType == IntrinsicISizeType::MinISize) {
     if (mCachedMinISize == NS_INTRINSIC_ISIZE_UNKNOWN) {
-      mCachedMinISize = MinISize(aContext);
+      mCachedMinISize = MinISize(aInput);
     }
     return mCachedMinISize;
   }
 
   if (mCachedPrefISize == NS_INTRINSIC_ISIZE_UNKNOWN) {
-    mCachedPrefISize = PrefISize(aContext);
+    mCachedPrefISize = PrefISize(aInput);
   }
   return mCachedPrefISize;
 }
 
 /* virtual */
-nscoord nsBlockFrame::MinISize(gfxContext* aContext) {
+nscoord nsBlockFrame::MinISize(const IntrinsicSizeInput& aInput) {
   if (Maybe<nscoord> containISize = ContainIntrinsicISize()) {
     return *containISize;
   }
@@ -871,8 +871,12 @@ nscoord nsBlockFrame::MinISize(gfxContext* aContext) {
 #endif
       if (line->IsBlock()) {
         data.ForceBreak();
+        nsIFrame* kid = line->mFirstChild;
+        const IntrinsicSizeInput kidInput(aInput, kid->GetWritingMode(),
+                                          GetWritingMode());
         data.mCurrentLine = nsLayoutUtils::IntrinsicForContainer(
-            aContext, line->mFirstChild, IntrinsicISizeType::MinISize);
+            kidInput.mContext, kid, IntrinsicISizeType::MinISize,
+            kidInput.mPercentageBasis);
         data.ForceBreak();
       } else {
         if (!curFrame->GetPrevContinuation() && TextIndentAppliesTo(line)) {
@@ -883,7 +887,9 @@ nscoord nsBlockFrame::MinISize(gfxContext* aContext) {
         nsIFrame* kid = line->mFirstChild;
         for (int32_t i = 0, i_end = line->GetChildCount(); i != i_end;
              ++i, kid = kid->GetNextSibling()) {
-          kid->AddInlineMinISize(aContext, &data);
+          const IntrinsicSizeInput kidInput(aInput, kid->GetWritingMode(),
+                                            GetWritingMode());
+          kid->AddInlineMinISize(kidInput, &data);
           if (whiteSpaceCanWrap && data.mTrailingWhitespace) {
             data.OptionallyBreak();
           }
@@ -903,7 +909,7 @@ nscoord nsBlockFrame::MinISize(gfxContext* aContext) {
 }
 
 /* virtual */
-nscoord nsBlockFrame::PrefISize(gfxContext* aContext) {
+nscoord nsBlockFrame::PrefISize(const IntrinsicSizeInput& aInput) {
   if (Maybe<nscoord> containISize = ContainIntrinsicISize()) {
     return *containISize;
   }
@@ -941,15 +947,19 @@ nscoord nsBlockFrame::PrefISize(gfxContext* aContext) {
       AutoNoisyIndenter lineindent(gNoisyIntrinsic);
 #endif
       if (line->IsBlock()) {
+        nsIFrame* kid = line->mFirstChild;
         StyleClear clearType;
-        if (!data.mLineIsEmpty || BlockCanIntersectFloats(line->mFirstChild)) {
+        if (!data.mLineIsEmpty || BlockCanIntersectFloats(kid)) {
           clearType = StyleClear::Both;
         } else {
-          clearType = line->mFirstChild->StyleDisplay()->mClear;
+          clearType = kid->StyleDisplay()->mClear;
         }
         data.ForceBreak(clearType);
+        const IntrinsicSizeInput kidInput(aInput, kid->GetWritingMode(),
+                                          GetWritingMode());
         data.mCurrentLine = nsLayoutUtils::IntrinsicForContainer(
-            aContext, line->mFirstChild, IntrinsicISizeType::PrefISize);
+            kidInput.mContext, kid, IntrinsicISizeType::PrefISize,
+            kidInput.mPercentageBasis);
         data.ForceBreak();
       } else {
         if (!curFrame->GetPrevContinuation() && TextIndentAppliesTo(line)) {
@@ -965,7 +975,9 @@ nscoord nsBlockFrame::PrefISize(gfxContext* aContext) {
         nsIFrame* kid = line->mFirstChild;
         for (int32_t i = 0, i_end = line->GetChildCount(); i != i_end;
              ++i, kid = kid->GetNextSibling()) {
-          kid->AddInlinePrefISize(aContext, &data);
+          const IntrinsicSizeInput kidInput(aInput, kid->GetWritingMode(),
+                                            GetWritingMode());
+          kid->AddInlinePrefISize(kidInput, &data);
         }
       }
 #ifdef DEBUG
@@ -1022,6 +1034,12 @@ nsresult nsBlockFrame::GetPrefWidthTightBounds(gfxContext* aRenderingContext,
         data.mLine = &line;
         data.SetLineContainer(curFrame);
         nsIFrame* kid = line->mFirstChild;
+        // Per comment in nsIFrame::GetPrefWidthTightBounds(), the function is
+        // only implemented for nsBlockFrame and nsTextFrame and is used to
+        // determine the intrinsic inline sizes of MathML token elements. These
+        // elements shouldn't have percentage block sizes that require a
+        // percentage basis for resolution.
+        const IntrinsicSizeInput kidInput(aRenderingContext, Nothing());
         for (int32_t i = 0, i_end = line->GetChildCount(); i != i_end;
              ++i, kid = kid->GetNextSibling()) {
           rv = kid->GetPrefWidthTightBounds(aRenderingContext, &childX,
@@ -1029,7 +1047,7 @@ nsresult nsBlockFrame::GetPrefWidthTightBounds(gfxContext* aRenderingContext,
           NS_ENSURE_SUCCESS(rv, rv);
           *aX = std::min(*aX, data.mCurrentLine + childX);
           *aXMost = std::max(*aXMost, data.mCurrentLine + childXMost);
-          kid->AddInlinePrefISize(aRenderingContext, &data);
+          kid->AddInlinePrefISize(kidInput, &data);
         }
       }
     }
@@ -3437,6 +3455,7 @@ bool nsBlockFrame::ReflowDirtyLines(BlockReflowState& aState) {
       if (!nextInFlow->mLines.empty()) {
         RemoveFirstLine(nextInFlow->mLines, nextInFlow->mFrames, &pulledLine,
                         &pulledFrames);
+        ClearLineCursors();
       } else {
         // Grab an overflow line if there are any
         FrameLines* overflowLines = nextInFlow->GetOverflowLines();
@@ -3657,6 +3676,7 @@ void nsBlockFrame::DeleteLine(BlockReflowState& aState,
     nsLineBox* line = aLine;
     aLine = mLines.erase(aLine);
     FreeLineBox(line);
+    ClearLineCursors();
     // Mark the previous margin of the next line dirty since we need to
     // recompute its top position.
     if (aLine != aLineEnd) {
@@ -4874,6 +4894,7 @@ void nsBlockFrame::DoReflowInlineFrames(
   for (i = 0;
        LineReflowStatus::OK == lineReflowStatus && i < aLine->GetChildCount();
        i++, frame = frame->GetNextSibling()) {
+    SetLineCursorForDisplay(aLine);
     ReflowInlineFrame(aState, aLineLayout, aLine, frame, &lineReflowStatus);
     if (LineReflowStatus::OK != lineReflowStatus) {
       // It is possible that one or more of next lines are empty
@@ -4887,6 +4908,7 @@ void nsBlockFrame::DoReflowInlineFrames(
         aLine = mLines.erase(aLine);
         NS_ASSERTION(nullptr == toremove->mFirstChild, "bad empty line");
         FreeLineBox(toremove);
+        ClearLineCursors();
       }
       --aLine;
 
@@ -4907,6 +4929,7 @@ void nsBlockFrame::DoReflowInlineFrames(
 
       while (LineReflowStatus::OK == lineReflowStatus) {
         int32_t oldCount = aLine->GetChildCount();
+        SetLineCursorForDisplay(aLine);
         ReflowInlineFrame(aState, aLineLayout, aLine, frame, &lineReflowStatus);
         if (aLine->GetChildCount() != oldCount) {
           // We just created a continuation for aFrame AND its going
@@ -4920,6 +4943,7 @@ void nsBlockFrame::DoReflowInlineFrames(
       }
     }
   }
+  ClearLineCursors();
 
   aState.mFlags.mIsLineLayoutEmpty = aLineLayout.LineIsEmpty();
 
@@ -5664,10 +5688,15 @@ void nsBlockFrame::PushLines(BlockReflowState& aState,
       // Mark all the overflow lines dirty so that they get reflowed when
       // they are pulled up by our next-in-flow.
 
+      nsLineBox* cursor = GetLineCursorForDisplay();
+
       // XXXldb Can this get called O(N) times making the whole thing O(N^2)?
       for (LineIterator line = overflowLines->mLines.begin(),
                         line_end = overflowLines->mLines.end();
            line != line_end; ++line) {
+        if (line == cursor) {
+          ClearLineCursors();
+        }
         line->MarkDirty();
         line->MarkPreviousMarginDirty();
         line->SetMovedFragments();
@@ -6882,8 +6911,8 @@ bool nsBlockInFlowLineIterator::FindValidLine() {
 // on looking for continuations.
 void nsBlockFrame::DoRemoveFrame(DestroyContext& aContext,
                                  nsIFrame* aDeletedFrame, uint32_t aFlags) {
-  // Clear our line cursor, since our lines may change.
-  ClearLineCursors();
+  // We use the line cursor to attempt to optimize removal, but must ensure
+  // it is cleared if lines change such that it may become invalid.
 
   if (aDeletedFrame->HasAnyStateBits(NS_FRAME_OUT_OF_FLOW |
                                      NS_FRAME_IS_OVERFLOW_CONTAINER)) {
@@ -6899,22 +6928,49 @@ void nsBlockFrame::DoRemoveFrame(DestroyContext& aContext,
     return;
   }
 
-  // Find the line that contains deletedFrame
+  // Find the line that contains deletedFrame. Start from the line cursor
+  // (if available) and search to the end of the normal line list, then
+  // from the start to the line cursor, and last the overflow lines.
   nsLineList::iterator line_start = mLines.begin(), line_end = mLines.end();
   nsLineList::iterator line = line_start;
+
+  bool found = false;
+  if (nsLineBox* cursor = GetLineCursorForDisplay()) {
+    for (line.SetPosition(cursor); line != line_end; ++line) {
+      if (line->Contains(aDeletedFrame)) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      // Setup for a shorter TryAllLines normal line search to avoid searching
+      // the [cursor .. line_end] range again.
+      line = line_start;
+      line_end.SetPosition(cursor);
+    }
+  }
+
   FrameLines* overflowLines = nullptr;
   bool searchingOverflowList = false;
-  // Make sure we look in the overflow lines even if the normal line
-  // list is empty
-  TryAllLines(&line, &line_start, &line_end, &searchingOverflowList,
-              &overflowLines);
-  while (line != line_end) {
-    if (line->Contains(aDeletedFrame)) {
-      break;
-    }
-    ++line;
+  if (!found) {
+    // Make sure we look in the overflow lines even if the normal line
+    // list is empty.
     TryAllLines(&line, &line_start, &line_end, &searchingOverflowList,
                 &overflowLines);
+    while (line != line_end) {
+      if (line->Contains(aDeletedFrame)) {
+        break;
+      }
+      ++line;
+      TryAllLines(&line, &line_start, &line_end, &searchingOverflowList,
+                  &overflowLines);
+    }
+    if (!searchingOverflowList && (GetStateBits() & NS_BLOCK_HAS_LINE_CURSOR)) {
+      // Restore line_end since we shortened the search to the cursor.
+      line_end = mLines.end();
+      // Clear our line cursors, since our normal line list may change.
+      ClearLineCursors();
+    }
   }
 
   if (line == line_end) {
@@ -7022,6 +7078,7 @@ void nsBlockFrame::DoRemoveFrame(DestroyContext& aContext,
       nsLineBox* cur = line;
       if (!searchingOverflowList) {
         line = mLines.erase(line);
+        ClearLineCursors();
         // Invalidate the space taken up by the line.
         // XXX We need to do this if we're removing a frame as a result of
         // a call to RemoveFrame(), but we may not need to do this in all
@@ -7214,6 +7271,7 @@ void nsBlockFrame::RemoveFrameFromLine(nsIFrame* aChild,
       aLine->MarkPreviousMarginDirty();
     }
     FreeLineBox(lineBox);
+    ClearLineCursors();
   }
 }
 
