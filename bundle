@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+import subprocess
+import shutil
+import os
+import glob
+import zipfile
+
+
+class ZipUtilities:
+	def toZip(self, file, filename, relDir):
+
+		zip_file = zipfile.ZipFile(filename, 'a')
+		if os.path.isfile(file):
+			zip_file.write(file, os.path.relpath(file, relDir))
+		else:
+			self.addFolderToZip(zip_file, file, relDir)
+
+		zip_file.close()
+
+	def addFolderToZip(self, zip_file, folder, relDir): 
+
+		for file in os.listdir(folder):
+			full_path = os.path.join(folder, file)
+			if os.path.isfile(full_path):
+				zip_file.write(full_path, os.path.relpath(full_path, relDir))
+			elif os.path.isdir(full_path):
+				self.addFolderToZip(zip_file, full_path, relDir)
+
+
+
+mozDir = "./objdir-frontend"
+fenixJniDir = "./mobile/android/fenix/app/src/main/jniLibs/"
+fenixAssetDir = "./mobile/android/fenix/app/src/main/assets/"
+
+omniAssetDir = "./omniAssets"
+
+# Clear any existing omniAssetDir 
+if os.path.exists(omniAssetDir):
+	shutil.rmtree(omniAssetDir)
+
+# Clear any existing JNI directories
+if os.path.exists(fenixJniDir):
+	shutil.rmtree(fenixJniDir)
+
+# Create an empty omniAssetDir
+os.makedirs(omniAssetDir)
+
+
+
+target = ["armeabi", "x86_64", "aarch64", "x86"]
+
+# Configure and execute the mach process for each target cpus
+for cpu in target:
+	with open("mozconfig", "w") as file:
+		 file.write("# Build GeckoView/Firefox for Android Artifact Mode:\n")
+		 file.write("ac_add_options --enable-project=mobile/android\n")
+		 file.write("ac_add_options --enable-artifact-builds\n")
+		 file.write("# Write build artifacts to:\n")
+		 file.write("mk_add_options MOZ_OBJDIR="+ mozDir + "\n")
+		 file.write("ac_add_options --target=" + cpu + "\n")
+		 file.close()
+
+		 p = subprocess.Popen("./mach build", shell=True, stdout=subprocess.PIPE)
+
+		 for line in p.stdout:
+		 	print(line)
+
+		 p.wait()
+
+
+		 # List the target directories created by mach build
+		 d=mozDir + "/dist/geckoview/lib/"
+
+		 sourceDirs = [os.path.join(d, o) for o in os.listdir(d) if os.path.isdir(os.path.join(d,o))]
+
+		 # Copy the native so files into the fenix JNI directory 
+		 for srcDir in sourceDirs:
+
+		 	# Obtain the cpu target from the directory name
+		 	target = srcDir.split('/')[-1]
+
+		 	destDir = fenixJniDir+target
+
+		 	if not os.path.exists(destDir):
+		 		os.makedirs(destDir)
+
+		 	for filename in glob.glob(os.path.join(srcDir, '*.*')):
+		 		shutil.copy(filename, destDir)
+
+		 	# Unpack the target cpu files from omni.jar and place them in the asset directory  
+		 	# for later consumption
+		 	with zipfile.ZipFile(mozDir + "/dist/geckoview/assets/omni.ja", "r") as zip_ref:
+		 		zip_ref.extract(target + "/greprefs.js", omniAssetDir)
+		 		zip_ref.extract("defaults/pref/"+target + "/geckoview-prefs.js", omniAssetDir)
+
+
+# Copy omni.ja to the fenix asset directory
+shutil.copy(mozDir + "/dist/geckoview/assets/omni.ja", fenixAssetDir)
+
+# Update omni.ja to contain items for each target
+utilities = ZipUtilities()
+utilities.toZip(omniAssetDir, fenixAssetDir + "omni.ja", omniAssetDir)
+
+
+# Clear any existing omniAssetDir 
+if os.path.exists(omniAssetDir):
+	shutil.rmtree(omniAssetDir)
