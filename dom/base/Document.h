@@ -1098,6 +1098,8 @@ class Document : public nsINode,
    */
   void DisableCookieAccess() { mDisableCookieAccess = true; }
 
+  bool CookieAccessDisabled() const { return mDisableCookieAccess; }
+
   void SetLinkHandlingEnabled(bool aValue) { mLinksEnabled = aValue; }
   bool LinkHandlingEnabled() { return mLinksEnabled; }
 
@@ -3008,7 +3010,6 @@ class Document : public nsINode,
     NotMedia,
     Video,
     Image,
-    Plugin,
   };
 
   virtual enum MediaDocumentKind MediaDocumentKind() const {

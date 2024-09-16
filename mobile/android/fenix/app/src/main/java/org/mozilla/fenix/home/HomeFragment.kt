@@ -12,6 +12,7 @@ import android.content.res.Configuration
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
+import android.os.StrictMode
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -133,6 +134,7 @@ import org.mozilla.fenix.ext.hideToolbar
 import org.mozilla.fenix.ext.isTablet
 import org.mozilla.fenix.ext.isToolbarAtBottom
 import org.mozilla.fenix.ext.nav
+import org.mozilla.fenix.ext.openSetDefaultBrowserOption
 import org.mozilla.fenix.ext.recordEventInNimbus
 import org.mozilla.fenix.ext.registerForActivityResult
 import org.mozilla.fenix.ext.requireComponents
@@ -807,6 +809,7 @@ class HomeFragment : Fragment() {
                 appStore = requireComponents.appStore,
                 bottomToolbarContainerView = bottomToolbarContainerView,
                 sessionId = null,
+                findInPageFeature = { null },
             ),
             owner = this,
             view = binding.root,
@@ -1085,6 +1088,14 @@ class HomeFragment : Fragment() {
         }
 
         homeViewModel.sessionToDelete = null
+
+        // Determine if we should show the "Set as Default Browser" prompt
+        if (requireContext().settings().shouldShowSetAsDefaultPrompt) {
+            // This is to avoid disk read violations on some devices such as samsung and pixel for android 9/10
+            requireComponents.strictMode.resetAfter(StrictMode.allowThreadDiskReads()) {
+                showSetAsDefaultBrowserPrompt()
+            }
+        }
 
         requireComponents.appStore.state.wasLastTabClosedPrivate?.also {
             showUndoSnackbar(requireContext().tabClosedUndoMessage(it))
@@ -1637,6 +1648,14 @@ class HomeFragment : Fragment() {
             val directions = HomeFragmentDirections.actionLoginsListFragment()
             navController.navigate(directions)
         }
+    }
+
+    @VisibleForTesting
+    internal fun showSetAsDefaultBrowserPrompt() {
+        val settings = requireContext().settings()
+        settings.setAsDefaultPromptCalled()
+
+        activity?.openSetDefaultBrowserOption()
     }
 
     companion object {

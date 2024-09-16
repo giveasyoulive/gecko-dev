@@ -6,6 +6,7 @@ package org.mozilla.fenix.ui
 
 import androidx.compose.ui.test.junit4.AndroidComposeTestRule
 import androidx.test.espresso.Espresso.pressBack
+import androidx.test.filters.SdkSuppress
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Before
@@ -609,6 +610,7 @@ class SettingsSearchTest : TestSetup() {
     }
 
     // TestRail link: https://mozilla.testrail.io/index.php?/cases/view/2233337
+    @SdkSuppress(maxSdkVersion = 30)
     @Test
     fun verifyTheSearchEnginesListsRespectTheLocaleTest() {
         runWithSystemLocaleChanged(Locale.CHINA, activityTestRule.activityRule) {

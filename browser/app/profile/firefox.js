@@ -203,6 +203,13 @@ pref("app.update.langpack.enabled", true);
   // The amount of time, in seconds, before background tasks time out and exit.
   // Tasks can override this default (10 minutes).
   pref("toolkit.backgroundtasks.defaultTimeoutSec", 600);
+
+  #if defined(ENABLE_TESTS)
+    // Test prefs to verify background tasks inheret and override browser prefs
+    // correctly.
+    pref("toolkit.backgroundtasks.tests.browserPrefsInherited", 15);
+    pref("toolkit.backgroundtasks.tests.browserPrefsOverriden", 16);
+  #endif
 #endif
 
 // Symmetric (can be overridden by individual extensions) update preferences.
@@ -281,7 +288,7 @@ pref("browser.shell.defaultBrowserCheckCount", 0);
 pref("browser.shell.setDefaultBrowserUserChoice", true);
 // When setting default via UserChoice, temporarily rename an ancestor registry key to
 // prevent kernel drivers from locking the UserChoice subkeys.
-pref("browser.shell.setDefaultBrowserUserChoice.regRename", false);
+pref("browser.shell.setDefaultBrowserUserChoice.regRename", true);
 // When setting the default browser on Windows 10 using the UserChoice
 // registry keys, also try to set Firefox as the default PDF handler.
 pref("browser.shell.setDefaultPDFHandler", true);
@@ -493,12 +500,15 @@ pref("browser.urlbar.quicksuggest.contextualOptIn.topPosition", true);
 // Whether the quick suggest feature in the urlbar is enabled.
 pref("browser.urlbar.quicksuggest.enabled", false);
 
+// Whether Suggest should be hidden in the settings UI even when enabled.
+pref("browser.urlbar.quicksuggest.hideSettingsUI", false);
+
 // Whether Firefox Suggest will use the new Rust backend instead of the original
 // JS backend.
 pref("browser.urlbar.quicksuggest.rustEnabled", true);
 
 // Whether to show the QuickSuggest onboarding dialog.
-pref("browser.urlbar.quicksuggest.shouldShowOnboardingDialog", true);
+pref("browser.urlbar.quicksuggest.shouldShowOnboardingDialog", false);
 
 // Show QuickSuggest onboarding dialog on the nth browser restarts.
 pref("browser.urlbar.quicksuggest.showOnboardingDialogAfterNRestarts", 0);
@@ -843,9 +853,9 @@ pref("browser.shopping.experience2023.integratedSidebar", false);
 // Spin the cursor while the page is loading
 pref("browser.spin_cursor_while_busy", false);
 
-// Enable display of megalist option in browser sidebar
+// Enable display of contextual-password-manager option in browser sidebar
 // Keep it hidden from about:config for now.
-// pref("browser.megalist.enabled", false);
+// pref("browser.contextual-password-manager.enabled", false);
 
 // Enables the display of the Mozilla VPN banner in private browsing windows
 pref("browser.privatebrowsing.vpnpromourl", "https://vpn.mozilla.org/?utm_source=firefox-browser&utm_medium=firefox-%CHANNEL%-browser&utm_campaign=private-browsing-vpn-link");
@@ -1541,13 +1551,6 @@ pref("browser.bookmarks.editDialog.maxRecentFolders", 7);
   pref("security.sandbox.content.level", 1);
 #endif
 
-#if defined(MOZ_CONTENT_TEMP_DIR)
-  // ID (a UUID when set by gecko) that is used to form the name of a
-  // sandbox-writable temporary directory to be used by content processes
-  // when a temporary writable file is required.
-  pref("security.sandbox.content.tempDirSuffix", "");
-#endif
-
 #ifdef XP_WIN
   pref("browser.taskbar.previews.enable", false);
   pref("browser.taskbar.previews.max", 20);
@@ -1861,16 +1864,15 @@ pref("browser.newtabpage.activity-stream.discoverystream.region-stories-block", 
 pref("browser.newtabpage.activity-stream.discoverystream.region-stories-config", "US,DE,CA,GB,IE,CH,AT,BE,IN,FR,IT,ES");
 // List of regions that support the new recommendations BFF, also requires region-stories-config
 pref("browser.newtabpage.activity-stream.discoverystream.region-bff-config", "US,DE,CA,GB,IE,CH,AT,BE,IN,FR,IT,ES");
+pref("browser.newtabpage.activity-stream.discoverystream.merino-provider.enabled", true);
 
 // Merino & topic selection related prefs in nightly only
 #if defined(EARLY_BETA_OR_EARLIER)
-  pref("browser.newtabpage.activity-stream.discoverystream.merino-provider.enabled", true);
   // List of regions that get topics selection by default.
   pref("browser.newtabpage.activity-stream.discoverystream.topicSelection.region-topics-config", "US, CA");
   pref("browser.newtabpage.activity-stream.discoverystream.topicSelection.onboarding.enabled", true);
   pref("browser.newtabpage.activity-stream.discoverystream.topicLabels.region-topic-label-config", "US, CA");
 #else
-  pref("browser.newtabpage.activity-stream.discoverystream.merino-provider.enabled", false);
   pref("browser.newtabpage.activity-stream.discoverystream.topicSelection.region-topics-config", "");
   pref("browser.newtabpage.activity-stream.discoverystream.topicSelection.onboarding.enabled", false);
   pref("browser.newtabpage.activity-stream.discoverystream.topicLabels.region-topic-label-config", "");
@@ -1979,6 +1981,8 @@ pref("pdfjs.handleOctetStream", true);
 // Is the sidebar positioned ahead of the content browser
 pref("sidebar.position_start", true);
 pref("sidebar.revamp", false);
+pref("sidebar.animation.enabled", true);
+pref("sidebar.animation.duration-ms", 200);
 pref("sidebar.main.tools", "aichat,syncedtabs,history");
 pref("sidebar.verticalTabs", false);
 pref("sidebar.visibility", "always-show");

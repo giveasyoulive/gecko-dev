@@ -249,6 +249,21 @@ urlbar:
       description: >-
         The index of Fakespot results within the Firefox Suggest section. A
         negative index is relative to the end of the section.
+    keywordExposureResults:
+      type: string
+      setPref:
+        pref: browser.urlbar.keywordExposureResults
+        branch: user
+      description: >-
+        Comma-separated list of result types that should trigger
+        keyword-exposure telemetry. Keyword exposures can be recorded along with
+        result exposures. To enable keyword exposures for a result type, you
+        must add it both to this variable and to `exposureResults`. The only
+        exception is the "rust_exposure" result type, which can be added to this
+        variable even if it's not in `exposureResults` since it's enabled by
+        setting the `quickSuggestExposureSuggestionTypes` variable. Keyword
+        exposures are recorded in the `urlbar-keyword-exposure` ping. See that
+        ping's description for more.
     mdnFeatureGate:
       type: boolean
       setPref:
@@ -282,15 +297,20 @@ urlbar:
     exposureResults:
       type: string
       setPref:
-        branch: default
         pref: browser.urlbar.exposureResults
+        branch: user
       description: >-
-        Comma-separated list of result type combinations, that are used to determine if an exposure event should be fired.
+        Comma-separated list of result types that should trigger exposure
+        telemetry, which is recorded in the `exposure` event. By default
+        exposure results are visible like usual, but they can be hidden by
+        setting the `showExposureResults` variable to false. To also record
+        keyword exposures for a result type, include it in the
+        `keywordExposureResults` variable as well.
     showExposureResults:
       type: boolean
       setPref:
-        branch: default
         pref: browser.urlbar.showExposureResults
+        branch: user
       description: >-
         Boolean used to determine if the results defined in `exposureResults` should be shown in search results. Should be false for Control branch of an experiment.
     pocketFeatureGate:
@@ -311,13 +331,6 @@ urlbar:
       description: >-
         The group-relative suggestedIndex of Pocket suggestions within the Firefox
         Suggest section.
-    potentialExposureKeywords:
-      type: json
-      fallbackPref: browser.urlbar.potentialExposureKeywords
-      description: >-
-        An array of keyword strings that will trigger the
-        `urlbar-potential-exposure` ping when the user types one during a urlbar
-        session.
     quickSuggestAllowPositionInSuggestions:
       type: boolean
       fallbackPref: browser.urlbar.quicksuggest.allowPositionInSuggestions
@@ -360,7 +373,7 @@ urlbar:
       type: string
       setPref:
         pref: browser.urlbar.quicksuggest.exposureSuggestionTypes
-        branch: default
+        branch: user
       description: >-
         Comma-separated list of Suggest exposure suggestion types to enable.
         Exposure suggestions are used to test potential exposures. They trigger
@@ -368,11 +381,28 @@ urlbar:
         never visible. Set this variable to the `suggestion_type` defined in the
         remote settings record(s) that contains your keywords. If you want to
         test multiple suggestion types, separate them with commas, but also
-        consider using one experiment branch per type. Exposure suggestions are
-        recorded in telemetry with the "rust_exposure" result type. It's not
-        necessary to include "rust_exposure" in `exposureResults`. Unless you
-        are testing other results in the same experiment branch, it's also not
-        necessary to set `showExposureResults: false`.
+        consider using one experiment branch per type, especially if you are
+        also enabling keyword exposures. Exposure suggestions are recorded in
+        telemetry with the "rust_exposure" result type. It's not necessary to
+        include "rust_exposure" in `exposureResults`. Unless you are testing
+        other results in the same experiment branch, it's also not necessary to
+        set `showExposureResults: false`. To also record keyword exposures,
+        include "rust_exposure" in `keywordExposureResults`.
+    quickSuggestHideSettingsUI:
+      type: boolean
+      fallbackPref: browser.urlbar.quicksuggest.hideSettingsUI
+      description: >-
+        This variable is intended to be used in potential exposure experiments
+        in regions and locales where Suggest normally isn't enabled. Potential
+        exposure suggestions are implemented in Suggest, and this variable lets
+        us enable core Suggest functionality but keep it hidden. Set both
+        `quickSuggestEnabled` and `quickSuggestHideSettingsUI` to true, along
+        with `quickSuggestExposureSuggestionTypes`. This variable does NOT hide
+        visible suggestions and other UI that can be independently enabled with
+        other Nimbus variables. But since all visible suggestions are disabled
+        by default for users not in the Suggest population, as long as you don't
+        set any Nimbus variables to enable other suggestions and UI, Suggest
+        will remain hidden.
     quickSuggestImpressionCapsSponsoredEnabled:
       type: boolean
       fallbackPref: browser.urlbar.quicksuggest.impressionCaps.sponsoredEnabled
@@ -1495,12 +1525,6 @@ pdfjs:
   exposureDescription: >-
     Exposure is sent each time a pdf is displayed.
   variables:
-    addHighlight:
-      description: Set to true to highlight some text or something else in an existing pdf.
-      type: boolean
-      setPref:
-        branch: default
-        pref: pdfjs.enableHighlightEditor
     enableAltText:
       description: Set to true to enable alt text generation.
       type: boolean
@@ -2104,6 +2128,18 @@ networkPrioritization:
       setPref:
         branch: default
         pref: "network.http.http3.priority"
+    sendNoRFC7540Setting:
+      description: Whether to send the SETTINGS_NO_RFC7540_PRIORITIES for the HTTP2 session.
+      type: boolean
+      setPref:
+        branch: default
+        pref: "network.http.http2.send_NO_RFC7540_PRI"
+    h2deps:
+      description: Whether RFC7540 priorities / stream dependencies are enabled
+      type: boolean
+      setPref:
+        branch: default
+        pref: "network.http.http2.enabled.deps"
     h3BackgroundTabDeprioritization:
       description: Lowers the priority when the tab is in the background. Potential privacy concerns.
       type: boolean
@@ -3511,20 +3547,20 @@ pqcrypto:
   owner: jschanck@mozilla.com
   hasExposure: false
   variables:
-    tlsEnableXyber:
+    tlsEnableMlkem:
       type: boolean
       setPref:
         branch: default
         pref: security.tls.enable_kyber
       description: >-
-        Whether to enable Xyber768 for TLS.
-    h3EnableXyber:
+        Whether to enable mlkem768x25519 for TLS.
+    h3EnableMlkem:
       type: boolean
       setPref:
         branch: default
         pref: network.http.http3.enable_kyber
       description: >-
-        Whether to enable Xyber768 for H3/QUIC.
+        Whether to enable mlkem768x25519 for H3/QUIC.
     sendP256:
       type: boolean
       setPref:

@@ -2697,6 +2697,9 @@ class MCompare : public MBinaryInstruction, public ComparePolicy::Data {
     // Int64 compared as unsigneds.
     Compare_UInt64,
 
+    // IntPtr compared to IntPtr.
+    Compare_IntPtr,
+
     // IntPtr compared as unsigneds.
     Compare_UIntPtr,
 
@@ -2816,6 +2819,7 @@ class MCompare : public MBinaryInstruction, public ComparePolicy::Data {
   [[nodiscard]] MDefinition* tryFoldStringSubstring(TempAllocator& alloc);
   [[nodiscard]] MDefinition* tryFoldStringIndexOf(TempAllocator& alloc);
   [[nodiscard]] MDefinition* tryFoldBigInt64(TempAllocator& alloc);
+  [[nodiscard]] MDefinition* tryFoldBigIntPtr(TempAllocator& alloc);
   [[nodiscard]] MDefinition* tryFoldBigInt(TempAllocator& alloc);
 
  public:
@@ -2848,6 +2852,7 @@ class MCompare : public MBinaryInstruction, public ComparePolicy::Data {
 
       case Compare_Int64:
       case Compare_UInt64:
+      case Compare_IntPtr:
       case Compare_UIntPtr:
       case Compare_WasmAnyRef:
         return false;
@@ -2876,6 +2881,9 @@ class MCompare : public MBinaryInstruction, public ComparePolicy::Data {
         break;
       case Compare_UInt64:
         ty = "UInt64";
+        break;
+      case Compare_IntPtr:
+        ty = "IntPtr";
         break;
       case Compare_UIntPtr:
         ty = "UIntPtr";
@@ -3873,6 +3881,56 @@ class MInt64ToBigInt : public MUnaryInstruction, public NoTypePolicy::Data {
   bool canRecoverOnBailout() const override { return true; }
 
   ALLOW_CLONE(MInt64ToBigInt)
+};
+
+// Takes an Int64 and returns a IntPtr.
+class MInt64ToIntPtr : public MUnaryInstruction, public NoTypePolicy::Data {
+  Scalar::Type elementType_;
+
+  MInt64ToIntPtr(MDefinition* def, Scalar::Type elementType)
+      : MUnaryInstruction(classOpcode, def), elementType_(elementType) {
+    MOZ_ASSERT(def->type() == MIRType::Int64);
+    MOZ_ASSERT(Scalar::isBigIntType(elementType));
+    setResultType(MIRType::IntPtr);
+    setMovable();
+  }
+
+ public:
+  INSTRUCTION_HEADER(Int64ToIntPtr)
+  TRIVIAL_NEW_WRAPPERS
+
+  bool congruentTo(const MDefinition* ins) const override {
+    return congruentIfOperandsEqual(ins) &&
+           ins->toInt64ToIntPtr()->elementType() == elementType();
+  }
+
+  AliasSet getAliasSet() const override { return AliasSet::None(); }
+
+  Scalar::Type elementType() const { return elementType_; }
+
+  ALLOW_CLONE(MInt64ToIntPtr)
+};
+
+// Takes a IntPtr and returns an Int64.
+class MIntPtrToInt64 : public MUnaryInstruction, public NoTypePolicy::Data {
+  explicit MIntPtrToInt64(MDefinition* def)
+      : MUnaryInstruction(classOpcode, def) {
+    MOZ_ASSERT(def->type() == MIRType::IntPtr);
+    setResultType(MIRType::Int64);
+    setMovable();
+  }
+
+ public:
+  INSTRUCTION_HEADER(IntPtrToInt64)
+  TRIVIAL_NEW_WRAPPERS
+
+  bool congruentTo(const MDefinition* ins) const override {
+    return congruentIfOperandsEqual(ins);
+  }
+
+  AliasSet getAliasSet() const override { return AliasSet::None(); }
+
+  ALLOW_CLONE(MIntPtrToInt64)
 };
 
 // Converts any type to a string
@@ -5588,6 +5646,288 @@ class MBigIntBitNot : public MBigIntUnaryArithInstruction {
   bool canRecoverOnBailout() const override { return true; }
 
   ALLOW_CLONE(MBigIntBitNot)
+};
+
+class MBigIntPtrBinaryArithInstruction : public MBinaryInstruction,
+                                         public NoTypePolicy::Data {
+ protected:
+  MBigIntPtrBinaryArithInstruction(Opcode op, MDefinition* left,
+                                   MDefinition* right)
+      : MBinaryInstruction(op, left, right) {
+    MOZ_ASSERT(left->type() == MIRType::IntPtr);
+    MOZ_ASSERT(right->type() == MIRType::IntPtr);
+    setResultType(MIRType::IntPtr);
+    setMovable();
+  }
+
+  static bool isMaybeZero(MDefinition* ins);
+  static bool isMaybeNegative(MDefinition* ins);
+
+ public:
+  bool congruentTo(const MDefinition* ins) const override {
+    return binaryCongruentTo(ins);
+  }
+
+  AliasSet getAliasSet() const override { return AliasSet::None(); }
+};
+
+class MBigIntPtrAdd : public MBigIntPtrBinaryArithInstruction {
+  MBigIntPtrAdd(MDefinition* left, MDefinition* right)
+      : MBigIntPtrBinaryArithInstruction(classOpcode, left, right) {
+    setCommutative();
+  }
+
+ public:
+  INSTRUCTION_HEADER(BigIntPtrAdd)
+  TRIVIAL_NEW_WRAPPERS
+
+  [[nodiscard]] bool writeRecoverData(
+      CompactBufferWriter& writer) const override;
+  bool canRecoverOnBailout() const override { return true; }
+
+  ALLOW_CLONE(MBigIntPtrAdd)
+};
+
+class MBigIntPtrSub : public MBigIntPtrBinaryArithInstruction {
+  MBigIntPtrSub(MDefinition* left, MDefinition* right)
+      : MBigIntPtrBinaryArithInstruction(classOpcode, left, right) {}
+
+ public:
+  INSTRUCTION_HEADER(BigIntPtrSub)
+  TRIVIAL_NEW_WRAPPERS
+
+  [[nodiscard]] bool writeRecoverData(
+      CompactBufferWriter& writer) const override;
+  bool canRecoverOnBailout() const override { return true; }
+
+  ALLOW_CLONE(MBigIntPtrSub)
+};
+
+class MBigIntPtrMul : public MBigIntPtrBinaryArithInstruction {
+  MBigIntPtrMul(MDefinition* left, MDefinition* right)
+      : MBigIntPtrBinaryArithInstruction(classOpcode, left, right) {
+    setCommutative();
+  }
+
+ public:
+  INSTRUCTION_HEADER(BigIntPtrMul)
+  TRIVIAL_NEW_WRAPPERS
+
+  [[nodiscard]] bool writeRecoverData(
+      CompactBufferWriter& writer) const override;
+  bool canRecoverOnBailout() const override { return true; }
+
+  ALLOW_CLONE(MBigIntPtrMul)
+};
+
+class MBigIntPtrDiv : public MBigIntPtrBinaryArithInstruction {
+  bool canBeDivideByZero_;
+
+  MBigIntPtrDiv(MDefinition* left, MDefinition* right)
+      : MBigIntPtrBinaryArithInstruction(classOpcode, left, right) {
+    canBeDivideByZero_ = isMaybeZero(right);
+
+    // Bails when the divisor is zero.
+    if (canBeDivideByZero_) {
+      setGuard();
+    }
+  }
+
+ public:
+  INSTRUCTION_HEADER(BigIntPtrDiv)
+  TRIVIAL_NEW_WRAPPERS
+
+  bool canBeDivideByZero() const { return canBeDivideByZero_; }
+
+  [[nodiscard]] bool writeRecoverData(
+      CompactBufferWriter& writer) const override;
+  bool canRecoverOnBailout() const override { return true; }
+
+  ALLOW_CLONE(MBigIntPtrDiv)
+};
+
+class MBigIntPtrMod : public MBigIntPtrBinaryArithInstruction {
+  bool canBeDivideByZero_;
+
+  MBigIntPtrMod(MDefinition* left, MDefinition* right)
+      : MBigIntPtrBinaryArithInstruction(classOpcode, left, right) {
+    canBeDivideByZero_ = isMaybeZero(right);
+
+    // Bails when the divisor is zero.
+    if (canBeDivideByZero_) {
+      setGuard();
+    }
+  }
+
+ public:
+  INSTRUCTION_HEADER(BigIntPtrMod)
+  TRIVIAL_NEW_WRAPPERS
+
+  bool canBeDivideByZero() const { return canBeDivideByZero_; }
+
+  [[nodiscard]] bool writeRecoverData(
+      CompactBufferWriter& writer) const override;
+  bool canRecoverOnBailout() const override { return true; }
+
+  ALLOW_CLONE(MBigIntPtrMod)
+};
+
+class MBigIntPtrPow : public MBigIntPtrBinaryArithInstruction {
+  bool canBeNegativeExponent_;
+
+  MBigIntPtrPow(MDefinition* left, MDefinition* right)
+      : MBigIntPtrBinaryArithInstruction(classOpcode, left, right) {
+    canBeNegativeExponent_ = isMaybeNegative(right);
+
+    // Bails when the exponent is negative.
+    if (canBeNegativeExponent_) {
+      setGuard();
+    }
+  }
+
+ public:
+  INSTRUCTION_HEADER(BigIntPtrPow)
+  TRIVIAL_NEW_WRAPPERS
+
+  bool canBeNegativeExponent() const { return canBeNegativeExponent_; }
+
+  [[nodiscard]] bool writeRecoverData(
+      CompactBufferWriter& writer) const override;
+  bool canRecoverOnBailout() const override { return true; }
+
+  ALLOW_CLONE(MBigIntPtrPow)
+};
+
+class MBigIntPtrBinaryBitwiseInstruction : public MBinaryInstruction,
+                                           public NoTypePolicy::Data {
+ protected:
+  MBigIntPtrBinaryBitwiseInstruction(Opcode op, MDefinition* left,
+                                     MDefinition* right)
+      : MBinaryInstruction(op, left, right) {
+    MOZ_ASSERT(left->type() == MIRType::IntPtr);
+    MOZ_ASSERT(right->type() == MIRType::IntPtr);
+    setResultType(MIRType::IntPtr);
+    setMovable();
+  }
+
+ public:
+  bool congruentTo(const MDefinition* ins) const override {
+    return binaryCongruentTo(ins);
+  }
+  AliasSet getAliasSet() const override { return AliasSet::None(); }
+};
+
+class MBigIntPtrBitAnd : public MBigIntPtrBinaryBitwiseInstruction {
+  MBigIntPtrBitAnd(MDefinition* left, MDefinition* right)
+      : MBigIntPtrBinaryBitwiseInstruction(classOpcode, left, right) {
+    setCommutative();
+  }
+
+ public:
+  INSTRUCTION_HEADER(BigIntPtrBitAnd)
+  TRIVIAL_NEW_WRAPPERS
+
+  [[nodiscard]] bool writeRecoverData(
+      CompactBufferWriter& writer) const override;
+  bool canRecoverOnBailout() const override { return true; }
+
+  ALLOW_CLONE(MBigIntPtrBitAnd)
+};
+
+class MBigIntPtrBitOr : public MBigIntPtrBinaryBitwiseInstruction {
+  MBigIntPtrBitOr(MDefinition* left, MDefinition* right)
+      : MBigIntPtrBinaryBitwiseInstruction(classOpcode, left, right) {
+    setCommutative();
+  }
+
+ public:
+  INSTRUCTION_HEADER(BigIntPtrBitOr)
+  TRIVIAL_NEW_WRAPPERS
+
+  [[nodiscard]] bool writeRecoverData(
+      CompactBufferWriter& writer) const override;
+  bool canRecoverOnBailout() const override { return true; }
+
+  ALLOW_CLONE(MBigIntPtrBitOr)
+};
+
+class MBigIntPtrBitXor : public MBigIntPtrBinaryBitwiseInstruction {
+  MBigIntPtrBitXor(MDefinition* left, MDefinition* right)
+      : MBigIntPtrBinaryBitwiseInstruction(classOpcode, left, right) {
+    setCommutative();
+  }
+
+ public:
+  INSTRUCTION_HEADER(BigIntPtrBitXor)
+  TRIVIAL_NEW_WRAPPERS
+
+  [[nodiscard]] bool writeRecoverData(
+      CompactBufferWriter& writer) const override;
+  bool canRecoverOnBailout() const override { return true; }
+
+  ALLOW_CLONE(MBigIntPtrBitXor)
+};
+
+class MBigIntPtrLsh : public MBigIntPtrBinaryBitwiseInstruction {
+  MBigIntPtrLsh(MDefinition* left, MDefinition* right)
+      : MBigIntPtrBinaryBitwiseInstruction(classOpcode, left, right) {}
+
+ public:
+  INSTRUCTION_HEADER(BigIntPtrLsh)
+  TRIVIAL_NEW_WRAPPERS
+
+  bool fallible() const {
+    return !rhs()->isConstant() || rhs()->toConstant()->toIntPtr() > 0;
+  }
+
+  [[nodiscard]] bool writeRecoverData(
+      CompactBufferWriter& writer) const override;
+  bool canRecoverOnBailout() const override { return true; }
+
+  ALLOW_CLONE(MBigIntPtrLsh)
+};
+
+class MBigIntPtrRsh : public MBigIntPtrBinaryBitwiseInstruction {
+  MBigIntPtrRsh(MDefinition* left, MDefinition* right)
+      : MBigIntPtrBinaryBitwiseInstruction(classOpcode, left, right) {}
+
+ public:
+  INSTRUCTION_HEADER(BigIntPtrRsh)
+  TRIVIAL_NEW_WRAPPERS
+
+  bool fallible() const {
+    return !rhs()->isConstant() || rhs()->toConstant()->toIntPtr() < 0;
+  }
+
+  [[nodiscard]] bool writeRecoverData(
+      CompactBufferWriter& writer) const override;
+  bool canRecoverOnBailout() const override { return true; }
+
+  ALLOW_CLONE(MBigIntPtrRsh)
+};
+
+class MBigIntPtrBitNot : public MUnaryInstruction, public NoTypePolicy::Data {
+  explicit MBigIntPtrBitNot(MDefinition* input)
+      : MUnaryInstruction(classOpcode, input) {
+    MOZ_ASSERT(input->type() == MIRType::IntPtr);
+    setResultType(MIRType::IntPtr);
+    setMovable();
+  }
+
+ public:
+  INSTRUCTION_HEADER(BigIntPtrBitNot)
+  TRIVIAL_NEW_WRAPPERS
+
+  bool congruentTo(const MDefinition* ins) const override {
+    return congruentIfOperandsEqual(ins);
+  }
+  AliasSet getAliasSet() const override { return AliasSet::None(); }
+
+  [[nodiscard]] bool writeRecoverData(
+      CompactBufferWriter& writer) const override;
+  bool canRecoverOnBailout() const override { return true; }
+
+  ALLOW_CLONE(MBigIntPtrBitNot)
 };
 
 class MConcat : public MBinaryInstruction,

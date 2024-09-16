@@ -141,6 +141,12 @@ async function imageToText(request, model, tokenizer, processor, _config) {
   }
   lazy.console.debug("Inference done in ", Date.now() - start);
   result.output = toReturn[0][0].generated_text;
+
+  // Bug 1918220 - replace the result for models with that bug
+  if (result.output === "T") {
+    lazy.console.debug("Replacing `T` with `Text document.`");
+    result.output = "Text document.";
+  }
   return result;
 }
 
@@ -205,8 +211,6 @@ export class Pipeline {
   constructor(modelCache, config) {
     let start = Date.now();
     this.#modelCache = modelCache;
-
-    _logLevel = config.logLevel || "Error";
 
     // Setting up the Transformers.js environment
     // See https://huggingface.co/docs/transformers.js/api/env
@@ -300,6 +304,9 @@ export class Pipeline {
    * @returns {Promise<Pipeline>} The initialized pipeline instance.
    */
   static async initialize(modelCache, runtime, options) {
+    if (options.logLevel) {
+      _logLevel = options.logLevel;
+    }
     const taskName = options.taskName;
     lazy.console.debug(`Initializing Pipeline for task ${taskName}`);
     let config;

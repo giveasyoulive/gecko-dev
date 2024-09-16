@@ -284,6 +284,20 @@ features:
         type: Int
         default: 0
 
+  alternative-app-launcher-icon:
+    description: A feature that changes the app launcher icon background color.
+    variables:
+      enabled:
+        description: If true, the feature is active.
+        type: Boolean
+        default: false
+      reset-to-default:
+        description: >
+          If true use the default icon, if false use the alternative icon.
+          This is required to 'reset' the icon for enrolled users once the initial experiment is complete.
+        type: Boolean
+        default: false
+
   shopping-experience:
     description: A feature that shows product review quality information.
     variables:
@@ -440,6 +454,16 @@ features:
           this device will allow other devices to close tabs that are open on this device, and
           show a "close" button for tabs that are currently open on other supported devices
           in the synced tabs tray.
+        type: Boolean
+        default: true
+
+  ship:
+    description: The feature that controls Session History in Parent (SHIP) in Gecko.
+    variables:
+      disabled:
+        description: >
+          Whether or not to disable SHIP. SHIP is enabled when set to false. SHIP is disabled when
+          set to true.
         type: Boolean
         default: true
 

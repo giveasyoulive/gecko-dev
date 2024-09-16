@@ -1165,7 +1165,7 @@ nsresult ExternalResourceMap::PendingLoad::StartLoad(
   nsCOMPtr<nsIChannel> channel;
   rv = NS_NewChannel(getter_AddRefs(channel), aURI, aRequestingNode,
                      nsILoadInfo::SEC_REQUIRE_SAME_ORIGIN_INHERITS_SEC_CONTEXT,
-                     nsIContentPolicy::TYPE_OTHER,
+                     nsIContentPolicy::TYPE_INTERNAL_EXTERNAL_RESOURCE,
                      nullptr,  // aPerformanceStorage
                      loadGroup);
   NS_ENSURE_SUCCESS(rv, rv);
@@ -6551,43 +6551,28 @@ void Document::GetCookie(nsAString& aCookie, ErrorResult& aRv) {
   aCookie.Truncate();  // clear current cookie in case service fails;
                        // no cookie isn't an error condition.
 
-  if (mDisableCookieAccess) {
-    return;
-  }
+  nsCOMPtr<nsIPrincipal> cookiePrincipal;
+  nsCOMPtr<nsIPrincipal> cookiePartitionedPrincipal;
 
-  // If the document's sandboxed origin flag is set, then reading cookies
-  // is prohibited.
-  if (mSandboxFlags & SANDBOXED_ORIGIN) {
-    aRv.ThrowSecurityError(
-        "Forbidden in a sandboxed document without the 'allow-same-origin' "
-        "flag.");
-    return;
-  }
-
-  // GTests do not create an inner window and because of these a few security
-  // checks will block this method.
-  if (!StaticPrefs::dom_cookie_testing_enabled()) {
-    StorageAccess storageAccess = CookieAllowedForDocument(this);
-    if (storageAccess == StorageAccess::eDeny) {
+  CookieCommons::SecurityChecksResult checkResult =
+      CookieCommons::CheckGlobalAndRetrieveCookiePrincipals(
+          this, getter_AddRefs(cookiePrincipal),
+          getter_AddRefs(cookiePartitionedPrincipal));
+  switch (checkResult) {
+    case CookieCommons::SecurityChecksResult::eSandboxedError:
+      aRv.ThrowSecurityError(
+          "Forbidden in a sandboxed document without the 'allow-same-origin' "
+          "flag.");
       return;
-    }
 
-    if (ShouldPartitionStorage(storageAccess) &&
-        !StoragePartitioningEnabled(storageAccess, CookieJarSettings())) {
+    case CookieCommons::SecurityChecksResult::eSecurityError:
+      [[fallthrough]];
+
+    case CookieCommons::SecurityChecksResult::eDoNotContinue:
       return;
-    }
 
-    // If the document is a cookie-averse Document... return the empty string.
-    if (IsCookieAverse()) {
-      return;
-    }
-  }
-
-  // not having a cookie service isn't an error
-  nsCOMPtr<nsICookieService> service =
-      do_GetService(NS_COOKIESERVICE_CONTRACTID);
-  if (!service) {
-    return;
+    case CookieCommons::SecurityChecksResult::eContinue:
+      break;
   }
 
   bool thirdParty = true;
@@ -6603,35 +6588,13 @@ void Document::GetCookie(nsAString& aCookie, ErrorResult& aRv) {
     }
   }
 
-  nsCOMPtr<nsIPrincipal> cookiePrincipal = EffectiveCookiePrincipal();
-
   nsTArray<nsCOMPtr<nsIPrincipal>> principals;
+
+  MOZ_ASSERT(cookiePrincipal);
   principals.AppendElement(cookiePrincipal);
 
-  // CHIPS - If CHIPS is enabled the partitioned cookie jar is always available
-  // (and therefore the partitioned principal), the unpartitioned cookie jar is
-  // only available in first-party or third-party with storageAccess contexts.
-  // In both cases, the document will have storage access.
-  bool isCHIPS = StaticPrefs::network_cookie_CHIPS_enabled() &&
-                 CookieJarSettings()->GetPartitionForeign();
-  bool documentHasStorageAccess = false;
-  nsresult rv = HasStorageAccessSync(documentHasStorageAccess);
-  if (NS_WARN_IF(NS_FAILED(rv))) {
-    return;
-  }
-
-  if (isCHIPS && documentHasStorageAccess) {
-    // Assert that the cookie principal is unpartitioned.
-    MOZ_ASSERT(cookiePrincipal->OriginAttributesRef().mPartitionKey.IsEmpty());
-    // Only append the partitioned originAttributes if the partitionKey is set.
-    // The partitionKey could be empty for partitionKey in partitioned
-    // originAttributes if the document is for privilege context, such as the
-    // extension's background page.
-    if (!PartitionedPrincipal()
-             ->OriginAttributesRef()
-             .mPartitionKey.IsEmpty()) {
-      principals.AppendElement(PartitionedPrincipal());
-    }
+  if (cookiePartitionedPrincipal) {
+    principals.AppendElement(cookiePartitionedPrincipal);
   }
 
   nsTArray<RefPtr<Cookie>> cookieList;
@@ -6639,13 +6602,16 @@ void Document::GetCookie(nsAString& aCookie, ErrorResult& aRv) {
   int64_t currentTimeInUsec = PR_Now();
   int64_t currentTime = currentTimeInUsec / PR_USEC_PER_SEC;
 
-  for (auto& principal : principals) {
-    if (!CookieCommons::IsSchemeSupported(principal)) {
-      return;
-    }
+  // not having a cookie service isn't an error
+  nsCOMPtr<nsICookieService> service =
+      do_GetService(NS_COOKIESERVICE_CONTRACTID);
+  if (!service) {
+    return;
+  }
 
+  for (auto& principal : principals) {
     nsAutoCString baseDomain;
-    rv = CookieCommons::GetBaseDomain(principal, baseDomain);
+    nsresult rv = CookieCommons::GetBaseDomain(principal, baseDomain);
     if (NS_WARN_IF(NS_FAILED(rv))) {
       return;
     }
@@ -6687,8 +6653,9 @@ void Document::GetCookie(nsAString& aCookie, ErrorResult& aRv) {
         continue;
       }
 
-      if (thirdParty && !CookieCommons::ShouldIncludeCrossSiteCookieForDocument(
-                            cookie, this)) {
+      if (thirdParty && !CookieCommons::ShouldIncludeCrossSiteCookie(
+                            cookie, CookieJarSettings()->GetPartitionForeign(),
+                            IsInPrivateBrowsing(), UsingStorageAccess())) {
         continue;
       }
 
@@ -6740,32 +6707,26 @@ void Document::GetCookie(nsAString& aCookie, ErrorResult& aRv) {
 }
 
 void Document::SetCookie(const nsAString& aCookieString, ErrorResult& aRv) {
-  if (mDisableCookieAccess) {
-    return;
-  }
+  nsCOMPtr<nsIPrincipal> cookiePrincipal;
 
-  // If the document's sandboxed origin flag is set, then setting cookies
-  // is prohibited.
-  if (mSandboxFlags & SANDBOXED_ORIGIN) {
-    aRv.ThrowSecurityError(
-        "Forbidden in a sandboxed document without the 'allow-same-origin' "
-        "flag.");
-    return;
-  }
+  CookieCommons::SecurityChecksResult checkResult =
+      CookieCommons::CheckGlobalAndRetrieveCookiePrincipals(
+          this, getter_AddRefs(cookiePrincipal), nullptr);
+  switch (checkResult) {
+    case CookieCommons::SecurityChecksResult::eSandboxedError:
+      aRv.ThrowSecurityError(
+          "Forbidden in a sandboxed document without the 'allow-same-origin' "
+          "flag.");
+      return;
 
-  StorageAccess storageAccess = CookieAllowedForDocument(this);
-  if (storageAccess == StorageAccess::eDeny) {
-    return;
-  }
+    case CookieCommons::SecurityChecksResult::eSecurityError:
+      [[fallthrough]];
 
-  if (ShouldPartitionStorage(storageAccess) &&
-      !StoragePartitioningEnabled(storageAccess, CookieJarSettings())) {
-    return;
-  }
+    case CookieCommons::SecurityChecksResult::eDoNotContinue:
+      return;
 
-  // If the document is a cookie-averse Document... do nothing.
-  if (IsCookieAverse()) {
-    return;
+    case CookieCommons::SecurityChecksResult::eContinue:
+      break;
   }
 
   if (!mDocumentURI) {
@@ -6829,8 +6790,9 @@ void Document::SetCookie(const nsAString& aCookieString, ErrorResult& aRv) {
                                                  nullptr, &thirdParty);
   }
 
-  if (thirdParty &&
-      !CookieCommons::ShouldIncludeCrossSiteCookieForDocument(cookie, this)) {
+  if (thirdParty && !CookieCommons::ShouldIncludeCrossSiteCookie(
+                        cookie, CookieJarSettings()->GetPartitionForeign(),
+                        IsInPrivateBrowsing(), UsingStorageAccess())) {
     return;
   }
 
@@ -16846,58 +16808,82 @@ void Document::UpdateIntersections(TimeStamp aNowTime) {
   });
 }
 
+static void UpdateEffectsOnBrowsingContext(BrowsingContext* aBc,
+                                           const IntersectionInput& aInput,
+                                           bool aIsHidden) {
+  Element* el = aBc->GetEmbedderElement();
+  if (!el) {
+    return;
+  }
+  auto* rb = RemoteBrowser::GetFrom(el);
+  if (!rb) {
+    return;
+  }
+  nsSubDocumentFrame* subDocFrame = do_QueryFrame(el->GetPrimaryFrame());
+  rb->UpdateEffects([&] {
+    if (aIsHidden || (aBc->IsTop() && !aBc->IsActive())) {
+      // Fully hidden if in the background.
+      return EffectsInfo::FullyHidden();
+    }
+    const IntersectionOutput output = DOMIntersectionObserver::Intersect(
+        aInput, *el, DOMIntersectionObserver::BoxToUse::Content);
+    if (!output.Intersects()) {
+      // XXX do we want to pass the scale and such down even if out of the
+      // viewport?
+      return EffectsInfo::FullyHidden();
+    }
+    MOZ_ASSERT(el->GetPrimaryFrame(), "How do we intersect without a frame?");
+    if (MOZ_UNLIKELY(NS_WARN_IF(!subDocFrame))) {
+      // <frame> not inside a <frameset> might not create a subdoc frame,
+      // for example.
+      return EffectsInfo::FullyHidden();
+    }
+    Maybe<nsRect> visibleRect;
+    gfx::MatrixScales rasterScale;
+    visibleRect = subDocFrame->GetVisibleRect();
+    if (!visibleRect) {
+      // If we have no visible rect (e.g., because we are zero-sized) we
+      // still want to provide the intersection rect in order to get the
+      // right throttling behavior.
+      visibleRect.emplace(*output.mIntersectionRect -
+                          output.mTargetRect.TopLeft());
+    }
+    rasterScale = subDocFrame->GetRasterScale();
+    ParentLayerToScreenScale2D transformToAncestorScale =
+        ParentLayerToParentLayerScale(
+            subDocFrame->PresShell()->GetCumulativeResolution()) *
+        nsLayoutUtils::GetTransformToAncestorScaleCrossProcessForFrameMetrics(
+            subDocFrame);
+    return EffectsInfo::VisibleWithinRect(visibleRect, rasterScale,
+                                          transformToAncestorScale);
+  }());
+  if (subDocFrame) {
+    if (nsFrameLoader* fl = subDocFrame->FrameLoader()) {
+      // TODO(emilio): Consider not doing this for inactive tops? It'd make
+      // janking the browser harder.
+      fl->UpdatePositionAndSize(subDocFrame);
+    }
+  }
+}
+
 void Document::UpdateRemoteFrameEffects() {
-  if (auto* wc = GetWindowContext(); wc && !wc->Children().IsEmpty()) {
-    auto margin = DOMIntersectionObserver::LazyLoadingRootMargin();
-    const IntersectionInput input = DOMIntersectionObserver::ComputeInput(
-        *this, /* aRoot = */ nullptr, &margin);
+  auto margin = DOMIntersectionObserver::LazyLoadingRootMargin();
+  const IntersectionInput input = DOMIntersectionObserver::ComputeInput(
+      *this, /* aRoot = */ nullptr, &margin);
+  const bool hidden = Hidden();
+  if (auto* wc = GetWindowContext()) {
     for (const RefPtr<BrowsingContext>& child : wc->Children()) {
-      Element* el = child->GetEmbedderElement();
-      if (!el) {
-        continue;
-      }
-      auto* rb = RemoteBrowser::GetFrom(el);
-      if (!rb) {
-        continue;
-      }
-      EffectsInfo info = [&] {
-        if (Hidden()) {
-          // If we're in the background, then the child frame should be hidden
-          // as well.
-          return EffectsInfo::FullyHidden();
-        }
-        const IntersectionOutput output = DOMIntersectionObserver::Intersect(
-            input, *el, DOMIntersectionObserver::BoxToUse::Content);
-        if (!output.Intersects()) {
-          // XXX do we want to pass the scale and such down even if out of the
-          // viewport?
-          return EffectsInfo::FullyHidden();
-        }
-        auto* frame = el->GetPrimaryFrame();
-        MOZ_ASSERT(frame, "How do we intersect with no frame?");
-        MOZ_ASSERT(frame->IsSubDocumentFrame(), "Hm?");
-        Maybe<nsRect> visibleRect;
-        gfx::MatrixScales rasterScale;
-        if (nsSubDocumentFrame* f = do_QueryFrame(frame)) {
-          visibleRect = f->GetVisibleRect();
-          if (!visibleRect) {
-            // If we have no visible rect (e.g., because we are zero-sized) we
-            // still want to provide the intersection rect in order to get the
-            // right throttling behavior.
-            visibleRect.emplace(*output.mIntersectionRect -
-                                output.mTargetRect.TopLeft());
-          }
-          rasterScale = f->GetRasterScale();
-        }
-        ParentLayerToScreenScale2D transformToAncestorScale =
-            ParentLayerToParentLayerScale(
-                frame->PresShell()->GetCumulativeResolution()) *
-            nsLayoutUtils::
-                GetTransformToAncestorScaleCrossProcessForFrameMetrics(frame);
-        return EffectsInfo::VisibleWithinRect(visibleRect, rasterScale,
-                                              transformToAncestorScale);
-      }();
-      rb->UpdateEffects(std::move(info));
+      UpdateEffectsOnBrowsingContext(child, input, hidden);
+    }
+  }
+  if (XRE_IsParentProcess()) {
+    if (auto* bc = GetBrowsingContext(); bc && bc->IsTop()) {
+      bc->Canonical()->CallOnAllTopDescendants(
+          [&](CanonicalBrowsingContext* aDescendant) {
+            UpdateEffectsOnBrowsingContext(aDescendant, input, hidden);
+            return CallState::Continue;
+          },
+          /* aIncludeNestedBrowsers = */ false);
     }
   }
   EnumerateSubDocuments([](Document& aDoc) {

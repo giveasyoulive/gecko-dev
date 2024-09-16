@@ -22,6 +22,7 @@ LOG = RaptorLogger(component="raptor-browsertime")
 
 class NetworkBench(BasePythonSupport):
     def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self._is_chrome = False
         self.browsertime_node = None
         self.backend_server = None
@@ -209,10 +210,17 @@ class NetworkBench(BasePythonSupport):
             ]
         if self.http_version == "h3":
             self.caddy_port = self.find_free_port(socket.SOCK_DGRAM)
-            cmd += [
-                "--firefox.preference",
-                f"network.http.http3.alt-svc-mapping-for-testing:localhost;h3=:{self.caddy_port}",
-            ]
+            if not self._is_chrome:
+                cmd += [
+                    "--firefox.preference",
+                    f"network.http.http3.alt-svc-mapping-for-testing:localhost;h3=:{self.caddy_port}",
+                ]
+            else:
+                spki = "VCIlmPM9NkgFQtrs4Oa5TeFcDu6MWRTKSNdePEhOgD8="
+                cmd += [
+                    f"--chrome.args=--origin-to-force-quic-on=localhost:{self.caddy_port}",
+                    f"--chrome.args=--ignore-certificate-errors-spki-list={spki}",
+                ]
         else:
             self.caddy_port = self.find_free_port(socket.SOCK_STREAM)
 

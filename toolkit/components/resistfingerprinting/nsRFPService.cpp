@@ -239,6 +239,12 @@ bool nsRFPService::IsRFPEnabledFor(
     const Maybe<RFPTarget>& aOverriddenFingerprintingSettings) {
   MOZ_ASSERT(aTarget != RFPTarget::AllTargets);
 
+#if SPOOFED_MAX_TOUCH_POINTS > 0
+  if (aTarget == RFPTarget::PointerId) {
+    return false;
+  }
+#endif
+
   if (StaticPrefs::privacy_resistFingerprinting_DoNotUseDirectly() ||
       (aIsPrivateMode &&
        StaticPrefs::privacy_resistFingerprinting_pbmode_DoNotUseDirectly())) {
@@ -2380,4 +2386,35 @@ void nsRFPService::GetMediaDeviceGroup(nsString& aGroup,
       aGroup = u"Speaker Device Group"_ns;
       break;
   }
+}
+
+/* static */
+uint16_t nsRFPService::ViewportSizeToAngle(int32_t aWidth, int32_t aHeight) {
+#ifdef MOZ_WIDGET_ANDROID
+  bool neutral = aHeight >= aWidth;
+#else
+  bool neutral = aWidth >= aHeight;
+#endif
+  if (neutral) {
+    return 0;
+  }
+  return 90;
+}
+
+/* static */
+dom::OrientationType nsRFPService::ViewportSizeToOrientationType(
+    int32_t aWidth, int32_t aHeight) {
+  if (aWidth >= aHeight) {
+    return dom::OrientationType::Landscape_primary;
+  }
+  return dom::OrientationType::Portrait_primary;
+}
+
+/* static */
+dom::OrientationType nsRFPService::GetDefaultOrientationType() {
+#ifdef MOZ_WIDGET_ANDROID
+  return dom::OrientationType::Portrait_primary;
+#else
+  return dom::OrientationType::Landscape_primary;
+#endif
 }

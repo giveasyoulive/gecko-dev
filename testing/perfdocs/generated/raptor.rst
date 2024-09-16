@@ -901,7 +901,7 @@ Standard benchmarks are third-party tests (i.e. Speedometer) that we have integr
    * **page cycles**: 1
    * **page timeout**: 600000
    * **repository**: https://github.com/webkit/motionmark
-   * **repository revision**: 5d9c88136d59c11daf78d539c73e4e3e88c091ab
+   * **repository revision**: be2a5fea89b6ef411b053ebeb95a6302b3dc0ecb
    * **suite name**: MotionMark
    * **support class**: motionmark-1-3.py
    * **test script**: motionmark-1-3.js
@@ -1231,7 +1231,7 @@ Standard benchmarks are third-party tests (i.e. Speedometer) that we have integr
    * **page cycles**: 1
    * **page timeout**: 600000
    * **repository**: https://github.com/webkit/motionmark
-   * **repository revision**: 5d9c88136d59c11daf78d539c73e4e3e88c091ab
+   * **repository revision**: be2a5fea89b6ef411b053ebeb95a6302b3dc0ecb
    * **suite name**: MotionMark
    * **support class**: motionmark-1-3.py
    * **test script**: motionmark-1-3.js
@@ -3240,7 +3240,7 @@ Standard benchmarks are third-party tests (i.e. Speedometer) that we have integr
    * **page cycles**: 1
    * **page timeout**: 600000
    * **repository**: https://github.com/webkit/motionmark
-   * **repository revision**: 5d9c88136d59c11daf78d539c73e4e3e88c091ab
+   * **repository revision**: be2a5fea89b6ef411b053ebeb95a6302b3dc0ecb
    * **suite name**: HTML suite
    * **support class**: motionmark-1-3.py
    * **test script**: motionmark-1-3.js
@@ -3570,7 +3570,7 @@ Standard benchmarks are third-party tests (i.e. Speedometer) that we have integr
    * **page cycles**: 1
    * **page timeout**: 600000
    * **repository**: https://github.com/webkit/motionmark
-   * **repository revision**: 5d9c88136d59c11daf78d539c73e4e3e88c091ab
+   * **repository revision**: be2a5fea89b6ef411b053ebeb95a6302b3dc0ecb
    * **suite name**: HTML suite
    * **support class**: motionmark-1-3.py
    * **test script**: motionmark-1-3.js
@@ -4463,8 +4463,9 @@ Standard benchmarks are third-party tests (i.e. Speedometer) that we have integr
    * **apps**: firefox, chrome, safari, safari-tp, custom-car
    * **expected**: pass
    * **expose browser profiler**: true
+   * **gather cpuTime**: true
    * **gecko profile interval**: 1
-   * **link searchfox**: `<https://searchfox.org/mozilla-central/source/testing/raptor/raptor/tests/benchmarks/speedometer-desktop.toml#16>`__
+   * **link searchfox**: `<https://searchfox.org/mozilla-central/source/testing/raptor/raptor/tests/benchmarks/speedometer-desktop.toml#17>`__
    * **lower is better**: false
    * **page cycles**: 5
    * **page timeout**: 600000
@@ -4589,7 +4590,7 @@ Standard benchmarks are third-party tests (i.e. Speedometer) that we have integr
         - ❌
 
 
-   .. list-table:: **test-android-hw-s21-13-0-android-aarch64-shippable-qr/opt**
+   .. list-table:: **test-android-hw-s24-14-0-android-aarch64-shippable-qr/opt**
       :widths: 30 15 15 15 15
       :header-rows: 1
 
@@ -4847,8 +4848,9 @@ Standard benchmarks are third-party tests (i.e. Speedometer) that we have integr
    * **apps**: fenix, geckoview, refbrow, chrome-m, cstm-car-m
    * **expected**: pass
    * **expose browser profiler**: true
+   * **gather cpuTime**: true
    * **gecko profile interval**: 1
-   * **link searchfox**: `<https://searchfox.org/mozilla-central/source/testing/raptor/raptor/tests/benchmarks/speedometer-mobile.toml#16>`__
+   * **link searchfox**: `<https://searchfox.org/mozilla-central/source/testing/raptor/raptor/tests/benchmarks/speedometer-mobile.toml#17>`__
    * **lower is better**: false
    * **page cycles**: 5
    * **page timeout**: 420000
@@ -4973,7 +4975,7 @@ Standard benchmarks are third-party tests (i.e. Speedometer) that we have integr
         - ❌
 
 
-   .. list-table:: **test-android-hw-s21-13-0-android-aarch64-shippable-qr/opt**
+   .. list-table:: **test-android-hw-s24-14-0-android-aarch64-shippable-qr/opt**
       :widths: 30 15 15 15 15
       :header-rows: 1
 
@@ -5243,9 +5245,10 @@ Standard benchmarks are third-party tests (i.e. Speedometer) that we have integr
    * **cold**: true
    * **expected**: pass
    * **expose browser profiler**: true
+   * **gather cpuTime**: true
    * **gecko profile interval**: 1
    * **host from parent**: false
-   * **link searchfox**: `<https://searchfox.org/mozilla-central/source/testing/raptor/raptor/tests/benchmarks/speedometer-desktop.toml#18>`__
+   * **link searchfox**: `<https://searchfox.org/mozilla-central/source/testing/raptor/raptor/tests/benchmarks/speedometer-desktop.toml#19>`__
    * **lower is better**: false
    * **page cycles**: 5
    * **page timeout**: 600000
@@ -5372,7 +5375,7 @@ Standard benchmarks are third-party tests (i.e. Speedometer) that we have integr
         - ❌
 
 
-   .. list-table:: **test-android-hw-s21-13-0-android-aarch64-shippable-qr/opt**
+   .. list-table:: **test-android-hw-s24-14-0-android-aarch64-shippable-qr/opt**
       :widths: 30 15 15 15 15
       :header-rows: 1
 
@@ -5658,9 +5661,10 @@ Standard benchmarks are third-party tests (i.e. Speedometer) that we have integr
    * **cold**: true
    * **expected**: pass
    * **expose browser profiler**: true
+   * **gather cpuTime**: true
    * **gecko profile interval**: 1
    * **host from parent**: false
-   * **link searchfox**: `<https://searchfox.org/mozilla-central/source/testing/raptor/raptor/tests/benchmarks/speedometer-mobile.toml#18>`__
+   * **link searchfox**: `<https://searchfox.org/mozilla-central/source/testing/raptor/raptor/tests/benchmarks/speedometer-mobile.toml#19>`__
    * **lower is better**: false
    * **page cycles**: 5
    * **page timeout**: 420000
@@ -5789,7 +5793,7 @@ Standard benchmarks are third-party tests (i.e. Speedometer) that we have integr
         - ❌
 
 
-   .. list-table:: **test-android-hw-s21-13-0-android-aarch64-shippable-qr/opt**
+   .. list-table:: **test-android-hw-s24-14-0-android-aarch64-shippable-qr/opt**
       :widths: 30 15 15 15 15
       :header-rows: 1
 
@@ -14289,7 +14293,7 @@ Browsertime tests that use a custom pageload test script. These use the pageload
    **Description**: Measures HTTP/3 download throughput with a local server
 
    * **alert threshold**: 2.0
-   * **apps**: firefox
+   * **apps**: firefox, chrome, custom-car
    * **browser cycles**: 1
    * **browsertime args**: --browsertime.download_iterations=10 --firefox.preference=network.http.http3.enable:true
    * **custom data**: true
@@ -14351,6 +14355,16 @@ Browsertime tests that use a custom pageload test script. These use the pageload
         - autoland
         - mozilla-release
         - mozilla-beta
+      * - **browsertime-network-bench-chrome-h3-download**
+        - ❌
+        - ❌
+        - ❌
+        - ❌
+      * - **browsertime-network-bench-custom-car-h3-download**
+        - ❌
+        - ❌
+        - ❌
+        - ❌
       * - **browsertime-network-bench-firefox-h3-download**
         - ❌
         - ❌
@@ -14399,6 +14413,11 @@ Browsertime tests that use a custom pageload test script. These use the pageload
         - autoland
         - mozilla-release
         - mozilla-beta
+      * - **browsertime-network-bench-chrome-h3-download**
+        - ❌
+        - ❌
+        - ❌
+        - ❌
       * - **browsertime-network-bench-firefox-h3-download**
         - ❌
         - ❌
@@ -14447,6 +14466,16 @@ Browsertime tests that use a custom pageload test script. These use the pageload
         - autoland
         - mozilla-release
         - mozilla-beta
+      * - **browsertime-network-bench-chrome-h3-download**
+        - ❌
+        - ❌
+        - ❌
+        - ❌
+      * - **browsertime-network-bench-custom-car-h3-download**
+        - ❌
+        - ❌
+        - ❌
+        - ❌
       * - **browsertime-network-bench-firefox-h3-download**
         - ❌
         - ❌
@@ -14469,7 +14498,7 @@ Browsertime tests that use a custom pageload test script. These use the pageload
    **Description**: Measures HTTP/3 file upload throughput with a local server
 
    * **alert threshold**: 2.0
-   * **apps**: firefox
+   * **apps**: firefox, chrome, custom-car
    * **browser cycles**: 1
    * **browsertime args**: --browsertime.upload_iterations=10 --firefox.preference=network.http.http3.enable:true
    * **custom data**: true
@@ -14531,6 +14560,16 @@ Browsertime tests that use a custom pageload test script. These use the pageload
         - autoland
         - mozilla-release
         - mozilla-beta
+      * - **browsertime-network-bench-chrome-h3-upload**
+        - ❌
+        - ❌
+        - ❌
+        - ❌
+      * - **browsertime-network-bench-custom-car-h3-upload**
+        - ❌
+        - ❌
+        - ❌
+        - ❌
       * - **browsertime-network-bench-firefox-h3-upload**
         - ❌
         - ❌
@@ -14579,6 +14618,11 @@ Browsertime tests that use a custom pageload test script. These use the pageload
         - autoland
         - mozilla-release
         - mozilla-beta
+      * - **browsertime-network-bench-chrome-h3-upload**
+        - ❌
+        - ❌
+        - ❌
+        - ❌
       * - **browsertime-network-bench-firefox-h3-upload**
         - ❌
         - ❌
@@ -14627,6 +14671,16 @@ Browsertime tests that use a custom pageload test script. These use the pageload
         - autoland
         - mozilla-release
         - mozilla-beta
+      * - **browsertime-network-bench-chrome-h3-upload**
+        - ❌
+        - ❌
+        - ❌
+        - ❌
+      * - **browsertime-network-bench-custom-car-h3-upload**
+        - ❌
+        - ❌
+        - ❌
+        - ❌
       * - **browsertime-network-bench-firefox-h3-upload**
         - ❌
         - ❌

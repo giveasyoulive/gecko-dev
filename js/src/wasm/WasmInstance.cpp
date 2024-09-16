@@ -2717,12 +2717,17 @@ void Instance::resetHotnessCounter(uint32_t funcIndex) {
   funcDefInstanceData(funcIndex)->hotnessCounter = INT32_MAX;
 }
 
+int32_t Instance::readHotnessCounter(uint32_t funcIndex) const {
+  return funcDefInstanceData(funcIndex)->hotnessCounter;
+}
+
 void Instance::submitCallRefHints(uint32_t funcIndex) {
   uint32_t callCountThreshold =
       JS::Prefs::wasm_experimental_inline_call_ref_threshold();
   CallRefMetricsRange range = codeMeta().getFuncDefCallRefs(funcIndex);
   for (uint32_t callRefIndex = range.begin;
        callRefIndex < range.begin + range.length; callRefIndex++) {
+    MOZ_RELEASE_ASSERT(callRefIndex < codeMeta().numCallRefMetrics);
     CallRefMetrics& metrics = callRefMetrics_[callRefIndex];
     if (metrics.state == CallRefMetrics::State::Monomorphic &&
         metrics.callCount >= callCountThreshold) {

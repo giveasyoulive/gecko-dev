@@ -394,16 +394,18 @@ JSObject* IonBindNameIC::update(JSContext* cx, HandleScript outerScript,
                                 IonBindNameIC* ic, HandleObject envChain) {
   IonScript* ionScript = outerScript->ionScript();
   jsbytecode* pc = ic->pc();
+  JSOp op = JSOp(*pc);
+  MOZ_ASSERT(op == JSOp::BindName || op == JSOp::BindUnqualifiedName ||
+             op == JSOp::BindUnqualifiedGName);
+
   Rooted<PropertyName*> name(cx, ic->script()->getName(pc));
 
   TryAttachIonStub<BindNameIRGenerator>(cx, ic, ionScript, envChain, name);
 
-  RootedObject holder(cx);
-  if (!LookupNameUnqualified(cx, name, envChain, &holder)) {
-    return nullptr;
+  if (op == JSOp::BindName) {
+    return LookupNameWithGlobalDefault(cx, name, envChain);
   }
-
-  return holder;
+  return LookupNameUnqualified(cx, name, envChain);
 }
 
 /* static */
@@ -413,12 +415,7 @@ JSObject* IonGetIteratorIC::update(JSContext* cx, HandleScript outerScript,
 
   TryAttachIonStub<GetIteratorIRGenerator>(cx, ic, ionScript, value);
 
-  PropertyIteratorObject* iterObj = ValueToIterator(cx, value);
-  if (!iterObj) {
-    return nullptr;
-  }
-
-  return iterObj;
+  return ValueToIterator(cx, value);
 }
 
 /* static */

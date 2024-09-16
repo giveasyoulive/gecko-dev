@@ -12682,7 +12682,8 @@ bool InitOptionParser(OptionParser& op) {
       !op.addBoolOption('\0', "wasm-tail-calls",
                         "Enable WebAssembly tail-calls proposal.") ||
       !op.addBoolOption('\0', "wasm-js-string-builtins",
-                        "Enable WebAssembly js-string-builtins proposal.")) {
+                        "Enable WebAssembly js-string-builtins proposal.") ||
+      !op.addBoolOption('\0', "enable-promise-try", "Enable Promise.try")) {
     return false;
   }
 
@@ -12739,12 +12740,15 @@ bool SetGlobalOptionsPreJSInit(const OptionParser& op) {
   if (op.getBoolOption("enable-iterator-helpers")) {
     JS::Prefs::setAtStartup_experimental_iterator_helpers(true);
   }
+  if (op.getBoolOption("enable-new-set-methods")) {
+    JS::Prefs::setAtStartup_experimental_new_set_methods(true);
+  }
+  if (op.getBoolOption("enable-regexp-modifiers")) {
+    JS::Prefs::setAtStartup_experimental_regexp_modifiers(true);
+  }
 #ifdef NIGHTLY_BUILD
   if (op.getBoolOption("enable-async-iterator-helpers")) {
     JS::Prefs::setAtStartup_experimental_async_iterator_helpers(true);
-  }
-  if (op.getBoolOption("enable-new-set-methods")) {
-    JS::Prefs::setAtStartup_experimental_new_set_methods(true);
   }
   if (op.getBoolOption("enable-symbols-as-weakmap-keys")) {
     JS::Prefs::setAtStartup_experimental_symbols_as_weakmap_keys(true);
@@ -12752,11 +12756,11 @@ bool SetGlobalOptionsPreJSInit(const OptionParser& op) {
   if (op.getBoolOption("enable-uint8array-base64")) {
     JS::Prefs::setAtStartup_experimental_uint8array_base64(true);
   }
-  if (op.getBoolOption("enable-regexp-modifiers")) {
-    JS::Prefs::setAtStartup_experimental_regexp_modifiers(true);
-  }
   if (op.getBoolOption("enable-regexp-escape")) {
     JS::Prefs::setAtStartup_experimental_regexp_escape(true);
+  }
+  if (op.getBoolOption("enable-promise-try")) {
+    JS::Prefs::setAtStartup_experimental_promise_try(true);
   }
 #endif
   if (op.getBoolOption("enable-json-parse-with-source")) {
@@ -13569,11 +13573,9 @@ bool SetContextJITOptions(JSContext* cx, const OptionParser& op) {
     jit::JitOptions.js_regexp_duplicate_named_groups = true;
   }
 
-#ifdef NIGHTLY_BUILD
   if (op.getBoolOption("enable-regexp-modifiers")) {
     jit::JitOptions.js_regexp_modifiers = true;
   }
-#endif
 
   return true;
 }
